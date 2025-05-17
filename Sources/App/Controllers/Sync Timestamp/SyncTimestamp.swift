@@ -28,6 +28,8 @@ final class SyncTimestamp {
     private var lastSyncProduct = UUID()
     private var lastSyncEmployee = UUID()
     private var lastSyncSale = UUID()
+    // Solo notifica a un observador externo
+    var onUpdate: ((VerifySyncParameters) -> Void)?
     
     // Método para actualizar la última fecha de sincronización
     func updateLastSyncDate(to entity: SyncEntities) {
@@ -47,6 +49,7 @@ final class SyncTimestamp {
         case .sale:
             lastSyncSale = UUID()
         }
+        onUpdate?(getLastSyncDate())
     }
     // Método para obtener la última fecha de sincronización
     func getLastSyncDate() -> VerifySyncParameters {
