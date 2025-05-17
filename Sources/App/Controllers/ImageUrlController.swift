@@ -113,8 +113,8 @@ struct ImageUrlController: RouteCollection {
         return "/app/images/"
     }
     private func getDomainUrl() -> String {
-        return "http://192.168.2.13:8080/"
-    } 
+        return "https://pizzarely.mrangel.dev/"
+    }
     private func fileExists(id: UUID) -> Bool {
         let fileManager = FileManager.default
         let filePath = getImageFolderPath() + id.uuidString + ".jpg"
