@@ -9,7 +9,7 @@ struct CustomerContoller: RouteCollection {
     }
     func sync(req: Request) async throws -> SyncCustomersResponse {
         let request = try req.content.decode(SyncFromCompanyParameters.self)
-        guard try SyncTimestamp.shared.shouldSync(clientSyncIds: request.syncIds, entity: .customer) else {
+        guard try await SyncTimestamp.shared.shouldSync(clientSyncIds: request.syncIds, entity: .customer) else {
             return SyncCustomersResponse(
                 customersDTOs: [],
                 syncIds: request.syncIds
@@ -22,7 +22,7 @@ struct CustomerContoller: RouteCollection {
             .with(\.$imageUrl)
             .limit(maxPerPage)
         let customers = try await query.all()
-        return SyncCustomersResponse(
+        return await SyncCustomersResponse(
             customersDTOs: customers.mapToListCustomerDTO(),
             syncIds: customers.count == maxPerPage ? request.syncIds : SyncTimestamp.shared.getUpdatedSyncTokens(entity: .customer, clientTokens: request.syncIds)
         )
@@ -53,7 +53,7 @@ struct CustomerContoller: RouteCollection {
             }
             customer.isCreditLimit = customer.isCreditLimitActive ? customer.totalDebt >= customer.creditLimit : false
             try await customer.update(on: req.db)
-            SyncTimestamp.shared.updateLastSyncDate(to: .customer)
+            await SyncTimestamp.shared.updateLastSyncDate(to: .customer)
             return DefaultResponse(
                 code: 200,
                 message: "Updated"
@@ -86,7 +86,7 @@ struct CustomerContoller: RouteCollection {
                 imageUrlID: try await ImageUrl.find(customerDTO.imageUrlId, on: req.db)?.id
             )
             try await customerNew.save(on: req.db)
-            SyncTimestamp.shared.updateLastSyncDate(to: .customer)
+            await SyncTimestamp.shared.updateLastSyncDate(to: .customer)
             return DefaultResponse(
                 code: 200,
                 message: "Created"
@@ -118,8 +118,8 @@ struct CustomerContoller: RouteCollection {
                 try await customer.update(on: transaction)
                 return remainingMoney
             }
-            SyncTimestamp.shared.updateLastSyncDate(to: .sale)
-            SyncTimestamp.shared.updateLastSyncDate(to: .customer)
+            await SyncTimestamp.shared.updateLastSyncDate(to: .sale)
+            await SyncTimestamp.shared.updateLastSyncDate(to: .customer)
             return PayCustomerDebtResponse(
                 customerId: payCustomerDebtParameters.customerId,
                 change: remainingMoney

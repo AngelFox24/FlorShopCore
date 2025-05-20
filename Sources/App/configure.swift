@@ -8,10 +8,13 @@ public func configure(_ app: Application) async throws {
     // uncomment to serve files from /Public folder
     // app.middleware.use(FileMiddleware(publicDirectory: app.directory.publicDirectory))
     app.http.server.configuration.hostname = "localhost" //Server Ubuntu
+//    app.http.server.configuration.hostname = "192.168.2.5" //Local Host for Debugging
+
     app.http.server.configuration.port = 8080
     
     app.routes.defaultMaxBodySize = "10mb"
 
+    //=========== FOR PRODUCCION ===========
     app.databases.use(DatabaseConfigurationFactory.postgres(configuration: .init(
         hostname: Environment.get("DATABASE_HOST") ?? "localhost",
         port: Environment.get("DATABASE_PORT").flatMap(Int.init(_:)) ?? SQLPostgresConfiguration.ianaPortNumber,
@@ -20,6 +23,20 @@ public func configure(_ app: Application) async throws {
         database: Environment.get("DATABASE_NAME") ?? "FlorCloudBDv1",
         tls: .prefer(try .init(configuration: .clientDefault)))
     ), as: .psql)
+    //=========== FOR PRODUCCION ===========
+    //=========== FOR DEBUGGING ===========
+//    let config = SQLPostgresConfiguration(
+//        hostname: "192.168.2.7",
+//        port: 5432,
+//        username: "vapor_username",
+//        password: "vapor_password",
+//        database: "FlorCloudBDv1",
+//        tls: .disable
+//    )
+//
+//    app.databases.use(.postgres(configuration: config), as: .psql)
+    //=========== FOR DEBUGGING ===========
+    
     app.migrations.add(CreateCompany())
     app.migrations.add(CreateImageUrl())
     app.migrations.add(CreateSubsidiary())

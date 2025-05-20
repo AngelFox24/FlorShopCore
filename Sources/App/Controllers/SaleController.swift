@@ -90,7 +90,7 @@ struct SaleController: RouteCollection {
     }
     func sync(req: Request) async throws -> SyncSalesResponse {
         let request = try req.content.decode(SyncFromSubsidiaryParameters.self)
-        guard try SyncTimestamp.shared.shouldSync(clientSyncIds: request.syncIds, entity: .sale) else {
+        guard try await SyncTimestamp.shared.shouldSync(clientSyncIds: request.syncIds, entity: .sale) else {
             return SyncSalesResponse(
                 salesDTOs: [],
                 syncIds: request.syncIds
@@ -105,7 +105,7 @@ struct SaleController: RouteCollection {
             }
             .limit(50)
         let sales = try await query.all()
-        return SyncSalesResponse(
+        return await SyncSalesResponse(
             salesDTOs: sales.mapToListSaleDTO(),
             syncIds: sales.count == maxPerPage ? request.syncIds : SyncTimestamp.shared.getUpdatedSyncTokens(entity: .sale, clientTokens: request.syncIds)
         )
@@ -189,9 +189,9 @@ struct SaleController: RouteCollection {
                 try await customerEntity.update(on: transaction)
             }
         }
-        SyncTimestamp.shared.updateLastSyncDate(to: .product)
-        SyncTimestamp.shared.updateLastSyncDate(to: .customer)
-        SyncTimestamp.shared.updateLastSyncDate(to: .sale)
+        await SyncTimestamp.shared.updateLastSyncDate(to: .product)
+        await SyncTimestamp.shared.updateLastSyncDate(to: .customer)
+        await SyncTimestamp.shared.updateLastSyncDate(to: .sale)
         return DefaultResponse(
             code: 200,
             message: "Created"

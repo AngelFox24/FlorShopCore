@@ -9,7 +9,7 @@ struct SubsidiaryController: RouteCollection {
     }
     func sync(req: Request) async throws -> SyncSubsidiariesResponse {
         let request = try req.content.decode(SyncFromCompanyParameters.self)
-        guard try SyncTimestamp.shared.shouldSync(clientSyncIds: request.syncIds, entity: .subsidiary) else {
+        guard try await SyncTimestamp.shared.shouldSync(clientSyncIds: request.syncIds, entity: .subsidiary) else {
             return SyncSubsidiariesResponse(
                 subsidiariesDTOs: [],
                 syncIds: request.syncIds
@@ -23,7 +23,7 @@ struct SubsidiaryController: RouteCollection {
             .with(\.$imageUrl)
             .limit(maxPerPage)
         let subsidiaries = try await query.all()
-        return SyncSubsidiariesResponse(
+        return await SyncSubsidiariesResponse(
             subsidiariesDTOs: subsidiaries.mapToListSubsidiaryDTO(),
             syncIds: subsidiaries.count == maxPerPage ? request.syncIds : SyncTimestamp.shared.getUpdatedSyncTokens(entity: .subsidiary, clientTokens: request.syncIds)
         )
@@ -47,7 +47,7 @@ struct SubsidiaryController: RouteCollection {
             }
             if update {
                 try await subsidiary.update(on: req.db)
-                SyncTimestamp.shared.updateLastSyncDate(to: .subsidiary)
+                await SyncTimestamp.shared.updateLastSyncDate(to: .subsidiary)
                 return DefaultResponse(
                     code: 200,
                     message: "Updated"
@@ -73,7 +73,7 @@ struct SubsidiaryController: RouteCollection {
                 imageUrlID: try await ImageUrl.find(subsidiaryDTO.imageUrlId, on: req.db)?.id
             )
             try await subsidiaryNew.save(on: req.db)
-            SyncTimestamp.shared.updateLastSyncDate(to: .subsidiary)
+            await SyncTimestamp.shared.updateLastSyncDate(to: .subsidiary)
             return DefaultResponse(
                 code: 200,
                 message: "Created"

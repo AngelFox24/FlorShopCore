@@ -9,7 +9,7 @@ struct ImageUrlController: RouteCollection {
     }
     func sync(req: Request) async throws -> SyncImageUrlResponse {
         let request = try req.content.decode(SyncImageParameters.self)
-        guard try SyncTimestamp.shared.shouldSync(clientSyncIds: request.syncIds, entity: .image) else {
+        guard try await SyncTimestamp.shared.shouldSync(clientSyncIds: request.syncIds, entity: .image) else {
             return SyncImageUrlResponse(
                 imagesUrlDTOs: [],
                 syncIds: request.syncIds
@@ -21,7 +21,7 @@ struct ImageUrlController: RouteCollection {
             .sort(\.$updatedAt, .ascending)
             .limit(maxPerPage)
         let images = try await query.all()
-        return SyncImageUrlResponse(
+        return await SyncImageUrlResponse(
             imagesUrlDTOs: images.mapToListImageURLDTO(),
             syncIds: images.count == maxPerPage ? request.syncIds : SyncTimestamp.shared.getUpdatedSyncTokens(entity: .image, clientTokens: request.syncIds)
         )
@@ -76,7 +76,7 @@ struct ImageUrlController: RouteCollection {
                     }
                 }
                 try await imageUrlNew.save(on: req.db)
-                SyncTimestamp.shared.updateLastSyncDate(to: .image)
+                await SyncTimestamp.shared.updateLastSyncDate(to: .image)
                 return imageUrlNew.toImageUrlDTO()
             }
         } else if imageUrlDto.imageUrl != "" { //Si no hay imageData debe tener URL
@@ -97,7 +97,7 @@ struct ImageUrlController: RouteCollection {
                 //Create
                 let imageUrlNew = imageUrlDto.toImageUrl()
                 try await imageUrlNew.save(on: req.db)
-                SyncTimestamp.shared.updateLastSyncDate(to: .image)
+                await SyncTimestamp.shared.updateLastSyncDate(to: .image)
                 return imageUrlNew.toImageUrlDTO()
             }
         } else {

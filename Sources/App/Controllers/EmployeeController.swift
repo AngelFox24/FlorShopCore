@@ -9,7 +9,7 @@ struct EmployeeController: RouteCollection {
     }
     func sync(req: Request) async throws -> SyncEmployeesResponse {
         let request = try req.content.decode(SyncFromSubsidiaryParameters.self)
-        guard try SyncTimestamp.shared.shouldSync(clientSyncIds: request.syncIds, entity: .employee) else {
+        guard try await SyncTimestamp.shared.shouldSync(clientSyncIds: request.syncIds, entity: .employee) else {
             return SyncEmployeesResponse(
                 employeesDTOs: [],
                 syncIds: request.syncIds
@@ -22,7 +22,7 @@ struct EmployeeController: RouteCollection {
             .with(\.$imageUrl)
             .limit(maxPerPage)
         let employees = try await query.all()
-        return SyncEmployeesResponse(
+        return await SyncEmployeesResponse(
             employeesDTOs: employees.mapToListEmployeeDTO(),
             syncIds: employees.count == maxPerPage ? request.syncIds : SyncTimestamp.shared.getUpdatedSyncTokens(entity: .employee, clientTokens: request.syncIds)
         )
@@ -50,7 +50,7 @@ struct EmployeeController: RouteCollection {
             employee.active = employeeDTO.active
             employee.$imageUrl.id = try await ImageUrl.find(employeeDTO.imageUrlId, on: req.db)?.id
             try await employee.update(on: req.db)
-            SyncTimestamp.shared.updateLastSyncDate(to: .employee)
+            await SyncTimestamp.shared.updateLastSyncDate(to: .employee)
             return DefaultResponse(
                 code: 200,
                 message: "Updated"
@@ -79,7 +79,7 @@ struct EmployeeController: RouteCollection {
                 imageUrlID: try await ImageUrl.find(employeeDTO.imageUrlId, on: req.db)?.id
             )
             try await employeeNew.save(on: req.db)
-            SyncTimestamp.shared.updateLastSyncDate(to: .employee)
+            await SyncTimestamp.shared.updateLastSyncDate(to: .employee)
             return DefaultResponse(
                 code: 200,
                 message: "Created"

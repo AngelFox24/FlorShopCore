@@ -17,9 +17,8 @@ enum SyncEntities {
     case sale
 }
 
-final class SyncTimestamp {
+actor SyncTimestamp {
     static let shared = SyncTimestamp()  // Singleton
-    private init() {}  // Evitar instanciación externa
     
     private var lastSyncImage = UUID()
     private var lastSyncCompany = UUID()
@@ -29,10 +28,9 @@ final class SyncTimestamp {
     private var lastSyncEmployee = UUID()
     private var lastSyncSale = UUID()
     // Solo notifica a un observador externo
-    var onUpdate: ((VerifySyncParameters) -> Void)?
     
     // Método para actualizar la última fecha de sincronización
-    func updateLastSyncDate(to entity: SyncEntities) {
+    func updateLastSyncDate(to entity: SyncEntities) async {
         switch entity {
         case .image:
             lastSyncImage = UUID()
@@ -49,7 +47,7 @@ final class SyncTimestamp {
         case .sale:
             lastSyncSale = UUID()
         }
-        onUpdate?(getLastSyncDate())
+        await WebSocketClientManager.shared.broadcast(getLastSyncDate())
     }
     // Método para obtener la última fecha de sincronización
     func getLastSyncDate() -> VerifySyncParameters {

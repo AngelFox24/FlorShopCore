@@ -9,7 +9,7 @@ struct CompanyController: RouteCollection {
     }
     func sync(req: Request) async throws -> SyncCompanyResponse {
         let request = try req.content.decode(SyncCompanyParameters.self)
-        guard try SyncTimestamp.shared.shouldSync(clientSyncIds: request.syncIds, entity: .company) else {
+        guard try await SyncTimestamp.shared.shouldSync(clientSyncIds: request.syncIds, entity: .company) else {
             return SyncCompanyResponse(
                 companyDTO: nil,
                 syncIds: request.syncIds
@@ -25,7 +25,7 @@ struct CompanyController: RouteCollection {
         }
         return SyncCompanyResponse(
             companyDTO: companyNN.toCompanyDTO(),
-            syncIds: SyncTimestamp.shared.getUpdatedSyncTokens(entity: .company, clientTokens: request.syncIds)
+            syncIds: await SyncTimestamp.shared.getUpdatedSyncTokens(entity: .company, clientTokens: request.syncIds)
         )
     }
     func save(req: Request) async throws -> DefaultResponse {
@@ -49,7 +49,7 @@ struct CompanyController: RouteCollection {
             }
             if update {
                 try await company.update(on: req.db)
-                SyncTimestamp.shared.updateLastSyncDate(to: .company)
+                await SyncTimestamp.shared.updateLastSyncDate(to: .company)
                 return DefaultResponse(
                     code: 200,
                     message: "Updated"
@@ -70,7 +70,7 @@ struct CompanyController: RouteCollection {
             }
             let companyNew = companyDTO.toCompany()
             try await companyNew.save(on: req.db)
-            SyncTimestamp.shared.updateLastSyncDate(to: .company)
+            await SyncTimestamp.shared.updateLastSyncDate(to: .company)
             return DefaultResponse(
                 code: 200,
                 message: "Created"

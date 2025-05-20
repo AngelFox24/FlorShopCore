@@ -10,7 +10,7 @@ struct ProductController: RouteCollection {
     }
     func sync(req: Request) async throws -> SyncProductsResponse {
         let request = try req.content.decode(SyncFromSubsidiaryParameters.self)
-        guard try SyncTimestamp.shared.shouldSync(clientSyncIds: request.syncIds, entity: .product) else {
+        guard try await SyncTimestamp.shared.shouldSync(clientSyncIds: request.syncIds, entity: .product) else {
             return SyncProductsResponse(
                 productsDTOs: [],
                 syncIds: request.syncIds
@@ -24,7 +24,7 @@ struct ProductController: RouteCollection {
             .with(\.$imageUrl)
             .limit(maxPerPage)
         let products = try await query.all()
-        return SyncProductsResponse(
+        return await SyncProductsResponse(
             productsDTOs: products.mapToListProductDTO(),
             syncIds: products.count == maxPerPage ? request.syncIds : SyncTimestamp.shared.getUpdatedSyncTokens(entity: .product, clientTokens: request.syncIds)
         )
@@ -56,7 +56,7 @@ struct ProductController: RouteCollection {
             product.unitPrice = productDTO.unitPrice
             product.$imageUrl.id = try await ImageUrl.find(productDTO.imageUrlId, on: req.db)?.id
             try await product.update(on: req.db)
-            SyncTimestamp.shared.updateLastSyncDate(to: .product)
+            await SyncTimestamp.shared.updateLastSyncDate(to: .product)
             return DefaultResponse(
                 code: 200,
                 message: "Updated"
@@ -86,7 +86,7 @@ struct ProductController: RouteCollection {
                 imageUrlID: try await ImageUrl.find(productDTO.imageUrlId, on: req.db)?.id
             )
             try await productNew.save(on: req.db)
-            SyncTimestamp.shared.updateLastSyncDate(to: .product)
+            await SyncTimestamp.shared.updateLastSyncDate(to: .product)
             return DefaultResponse(
                 code: 200,
                 message: "Created"
@@ -131,7 +131,7 @@ struct ProductController: RouteCollection {
         return try await req.db.transaction { transaction in
             // Iterar sobre cada producto y guardarlo
             for productDTO in productsDTO {
-                let imageUrlDTO = productDTO.imageUrlId
+                let _ = productDTO.imageUrlId
 //                if let imageUrl = imageUrlDTO?.toImageUrl() {
 //                    try await imageUrl.save(on: transaction)
 //                }

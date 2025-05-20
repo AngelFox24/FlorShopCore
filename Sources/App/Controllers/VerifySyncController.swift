@@ -15,16 +15,11 @@ struct VerifySyncController: RouteCollection {
         subsidiaries.webSocket("ws", onUpgrade: handleWebSocket)
     }
     func getTokens(req: Request) async throws -> VerifySyncParameters {
-        return SyncTimestamp.shared.getLastSyncDate()
+        print("Api version 2.0")
+        return await SyncTimestamp.shared.getLastSyncDate()
     }
-    func handleWebSocket(req: Request, ws: WebSocket) {
-        print("✅ Cliente WebSocket conectado")
-        
-        // Solo agregas el cliente, el envío inicial ya lo maneja WebSocketNotifier
-        WebSocketNotifier.shared.addClient(ws)
-        
-        ws.onClose.whenComplete { _ in
-            print("❌ Cliente desconectado")
-        }
+    func handleWebSocket(req: Request, ws: WebSocket) async {
+        print("WebSocket version 2.0")
+        try? await WebSocketClientManager.shared.addClient(ws)
     }
 }
