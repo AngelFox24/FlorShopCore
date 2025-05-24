@@ -1,10 +1,12 @@
 import Fluent
 import Vapor
+
 struct SessionController: RouteCollection {
-    func boot(routes: Vapor.RoutesBuilder) throws {
+    func boot(routes: any RoutesBuilder) throws {
         let session = routes.grouped("session")
-        session.post("logIn", use: logIn)
+        session.post("logIn", use: self.logIn)
     }
+    @Sendable
     func logIn(req: Request) async throws -> SessionConfig {
         let logInParameters = try req.content.decode(LogInParameters.self)
         let employee = try await Employee.query(on: req.db)

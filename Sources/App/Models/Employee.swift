@@ -6,9 +6,10 @@
 //
 
 import Fluent
-import Vapor
+import Foundation
+import struct Foundation.UUID
 
-final class Employee: Model, Content {
+final class Employee: Model, @unchecked Sendable {
     
     static let schema = "employees"
     

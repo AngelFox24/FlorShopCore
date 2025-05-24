@@ -1,9 +1,3 @@
-//
-//  SyncTimestamp.swift
-//  FlorApiRestV1
-//
-//  Created by Angel Curi Laurente on 05/10/2024.
-//
 import Fluent
 import Vapor
 

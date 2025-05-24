@@ -1,12 +1,14 @@
 import Fluent
 import Vapor
+
 struct CustomerContoller: RouteCollection {
-    func boot(routes: Vapor.RoutesBuilder) throws {
+    func boot(routes: any RoutesBuilder) throws {
         let customers = routes.grouped("customers")
-        customers.post("sync", use: sync)
-        customers.post(use: save)
-        customers.post("payDebt", use: payDebt)
+        customers.post("sync", use: self.sync)
+        customers.post(use: self.save)
+        customers.post("payDebt", use: self.payDebt)
     }
+    @Sendable
     func sync(req: Request) async throws -> SyncCustomersResponse {
         let request = try req.content.decode(SyncFromCompanyParameters.self)
         guard try await SyncTimestamp.shared.shouldSync(clientSyncIds: request.syncIds, entity: .customer) else {
@@ -27,6 +29,7 @@ struct CustomerContoller: RouteCollection {
             syncIds: customers.count == maxPerPage ? request.syncIds : SyncTimestamp.shared.getUpdatedSyncTokens(entity: .customer, clientTokens: request.syncIds)
         )
     }
+    @Sendable
     func save(req: Request) async throws -> DefaultResponse {
         let customerDTO = try req.content.decode(CustomerDTO.self)
         if let customer = try await Customer.find(customerDTO.id, on: req.db) {
@@ -93,6 +96,7 @@ struct CustomerContoller: RouteCollection {
             )
         }
     }
+    @Sendable
     func payDebt(req: Request) async throws -> PayCustomerDebtResponse {
         let payCustomerDebtParameters = try req.content.decode(PayCustomerDebtParameters.self)
         guard payCustomerDebtParameters.amount > 0 else {

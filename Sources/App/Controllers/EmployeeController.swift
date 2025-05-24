@@ -2,11 +2,12 @@ import Fluent
 import Vapor
 
 struct EmployeeController: RouteCollection {
-    func boot(routes: Vapor.RoutesBuilder) throws {
+    func boot(routes: any RoutesBuilder) throws {
         let employees = routes.grouped("employees")
-        employees.post("sync", use: sync)
-        employees.post(use: save)
+        employees.post("sync", use: self.sync)
+        employees.post(use: self.save)
     }
+    @Sendable
     func sync(req: Request) async throws -> SyncEmployeesResponse {
         let request = try req.content.decode(SyncFromSubsidiaryParameters.self)
         guard try await SyncTimestamp.shared.shouldSync(clientSyncIds: request.syncIds, entity: .employee) else {
@@ -27,6 +28,7 @@ struct EmployeeController: RouteCollection {
             syncIds: employees.count == maxPerPage ? request.syncIds : SyncTimestamp.shared.getUpdatedSyncTokens(entity: .employee, clientTokens: request.syncIds)
         )
     }
+    @Sendable
     func save(req: Request) async throws -> DefaultResponse {
         let employeeDTO = try req.content.decode(EmployeeDTO.self)
         if let employee = try await Employee.find(employeeDTO.id, on: req.db) {

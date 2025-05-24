@@ -1,9 +1,3 @@
-//
-//  WebSocketNotifier.swift
-//  FlorApiRestV1
-//
-//  Created by Angel Curi Laurente on 17/05/2025.
-//
 import Fluent
 import Vapor
 import NIOConcurrencyHelpers  // necesario para NIOLock

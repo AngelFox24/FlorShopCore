@@ -3,7 +3,7 @@ import Vapor
 
 func routes(_ app: Application) throws {
     app.get { req async in
-        "FlorShopApi v1.7"
+        "FlorShopApi v2"
     }
     try app.register(collection: VerifySyncController())
     try app.register(collection: SessionController())

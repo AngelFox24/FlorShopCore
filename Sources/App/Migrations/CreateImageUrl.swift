@@ -1,7 +1,7 @@
 import Fluent
 
 struct CreateImageUrl: AsyncMigration {
-    func prepare(on database: Database) async throws {
+    func prepare(on database: any Database) async throws {
         try await database.schema("imageUrls")
             .id()
             .field("imageUrl", .string, .required)
@@ -11,7 +11,7 @@ struct CreateImageUrl: AsyncMigration {
             .create()
     }
 
-    func revert(on database: Database) async throws {
+    func revert(on database: any Database) async throws {
         try await database.schema("imageUrls").delete()
     }
 }

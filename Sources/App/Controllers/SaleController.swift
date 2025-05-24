@@ -83,11 +83,12 @@ extension SaleDetailError: AbortError {
 }
 
 struct SaleController: RouteCollection {
-    func boot(routes: Vapor.RoutesBuilder) throws {
+    func boot(routes: any RoutesBuilder) throws {
         let sales = routes.grouped("sales")
-        sales.post("sync", use: sync)
-        sales.post(use: save)
+        sales.post("sync", use: self.sync)
+        sales.post(use: self.save)
     }
+    @Sendable
     func sync(req: Request) async throws -> SyncSalesResponse {
         let request = try req.content.decode(SyncFromSubsidiaryParameters.self)
         guard try await SyncTimestamp.shared.shouldSync(clientSyncIds: request.syncIds, entity: .sale) else {
@@ -110,6 +111,7 @@ struct SaleController: RouteCollection {
             syncIds: sales.count == maxPerPage ? request.syncIds : SyncTimestamp.shared.getUpdatedSyncTokens(entity: .sale, clientTokens: request.syncIds)
         )
     }
+    @Sendable
     func save(req: Request) async throws -> DefaultResponse {
         let saleTransactionDTO = try req.content.decode(RegisterSaleParameters.self)
         let date: Date = Date()

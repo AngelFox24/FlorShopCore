@@ -6,9 +6,10 @@
 //
 
 import Fluent
-import Vapor
+import Foundation
+import struct Foundation.UUID
 
-final class ImageUrl: Model, Content {
+final class ImageUrl: Model, @unchecked Sendable {
     static let schema = "imageUrls"
     
     @ID(key: .id)

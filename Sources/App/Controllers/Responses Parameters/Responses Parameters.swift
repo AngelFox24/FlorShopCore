@@ -1,9 +1,3 @@
-//
-//  File.swift
-//  
-//
-//  Created by Angel Curi Laurente on 15/08/2024.
-//
 import Vapor
 //MARK: Response Parameters
 struct DefaultResponse: Content {

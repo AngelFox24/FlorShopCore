@@ -2,12 +2,13 @@ import Fluent
 import Vapor
 
 struct ProductController: RouteCollection {
-    func boot(routes: Vapor.RoutesBuilder) throws {
+    func boot(routes: any RoutesBuilder) throws {
         let products = routes.grouped("products")
-        products.post("sync", use: sync)
-        products.post(use: save)
-        products.post("bulkCreate", use: bulkCreate)
+        products.post("sync", use: self.sync)
+        products.post(use: self.save)
+        products.post("bulkCreate", use: self.bulkCreate)
     }
+    @Sendable
     func sync(req: Request) async throws -> SyncProductsResponse {
         let request = try req.content.decode(SyncFromSubsidiaryParameters.self)
         guard try await SyncTimestamp.shared.shouldSync(clientSyncIds: request.syncIds, entity: .product) else {
@@ -29,6 +30,7 @@ struct ProductController: RouteCollection {
             syncIds: products.count == maxPerPage ? request.syncIds : SyncTimestamp.shared.getUpdatedSyncTokens(entity: .product, clientTokens: request.syncIds)
         )
     }
+    @Sendable
     func save(req: Request) async throws -> DefaultResponse {
         let productDTO = try req.content.decode(ProductDTO.self)
         guard productDTO.productName != "" else {
@@ -123,6 +125,7 @@ struct ProductController: RouteCollection {
             return false
         }
     }
+    @Sendable
     func bulkCreate(req: Request) async throws -> DefaultResponse {
         //No controla elementos repetidos osea Update
         let productsDTO = try req.content.decode([ProductDTO].self)

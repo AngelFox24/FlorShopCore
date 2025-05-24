@@ -1,12 +1,14 @@
 import Fluent
 import Vapor
+
 struct ImageUrlController: RouteCollection {
-    func boot(routes: Vapor.RoutesBuilder) throws {
+    func boot(routes: any RoutesBuilder) throws {
         let imageUrl = routes.grouped("imageUrls")
-        imageUrl.post("sync", use: sync)
-        imageUrl.get(":imageId", use: serveImage)
-        imageUrl.post(use: save)
+        imageUrl.post("sync", use: self.sync)
+        imageUrl.get(":imageId", use: self.serveImage)
+        imageUrl.post(use: self.save)
     }
+    @Sendable
     func sync(req: Request) async throws -> SyncImageUrlResponse {
         let request = try req.content.decode(SyncImageParameters.self)
         guard try await SyncTimestamp.shared.shouldSync(clientSyncIds: request.syncIds, entity: .image) else {
@@ -26,6 +28,7 @@ struct ImageUrlController: RouteCollection {
             syncIds: images.count == maxPerPage ? request.syncIds : SyncTimestamp.shared.getUpdatedSyncTokens(entity: .image, clientTokens: request.syncIds)
         )
     }
+    @Sendable
     func serveImage(req: Request) throws -> Response {
         // Extraer el UUID de la URL
         guard let imageIdS = req.parameters.get("imageId") else {
@@ -42,6 +45,7 @@ struct ImageUrlController: RouteCollection {
         // Crear la respuesta con el contenido de la imagen
         return req.fileio.streamFile(at: imageDirectory)
     }
+    @Sendable
     func save(req: Request) async throws -> ImageURLDTO {
         let imageUrlDto = try req.content.decode(ImageURLDTO.self)
         //No se permite edicion de ImagenUrl, en todo caso crear uno nuevo

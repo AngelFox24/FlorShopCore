@@ -15,26 +15,10 @@ public func configure(_ app: Application) async throws {
     app.routes.defaultMaxBodySize = "10mb"
 
     //=========== FOR PRODUCCION ===========
-    app.databases.use(DatabaseConfigurationFactory.postgres(configuration: .init(
-        hostname: Environment.get("DATABASE_HOST") ?? "localhost",
-        port: Environment.get("DATABASE_PORT").flatMap(Int.init(_:)) ?? SQLPostgresConfiguration.ianaPortNumber,
-        username: Environment.get("DATABASE_USERNAME") ?? "vapor_username",
-        password: Environment.get("DATABASE_PASSWORD") ?? "vapor_password",
-        database: Environment.get("DATABASE_NAME") ?? "FlorCloudBDv1",
-        tls: .prefer(try .init(configuration: .clientDefault)))
-    ), as: .psql)
+    app.databases.use(try DBConfig.production(), as: .psql)
     //=========== FOR PRODUCCION ===========
     //=========== FOR DEBUGGING ===========
-//    let config = SQLPostgresConfiguration(
-//        hostname: "192.168.2.7",
-//        port: 5432,
-//        username: "vapor_username",
-//        password: "vapor_password",
-//        database: "FlorCloudBDv1",
-//        tls: .disable
-//    )
-//
-//    app.databases.use(.postgres(configuration: config), as: .psql)
+//    app.databases.use(DBConfig.development(), as: .psql)
     //=========== FOR DEBUGGING ===========
     
     app.migrations.add(CreateCompany())
@@ -46,7 +30,7 @@ public func configure(_ app: Application) async throws {
     app.migrations.add(CreateSale())
     app.migrations.add(CreateSaleDetail())
     //Espera a que la migracion se haga
-    try await app.autoMigrate().wait()
+//    try await app.autoMigrate().wait()
     //No espera a que la migracion se haga
 //    try app.autoMigrate().get()
     // register routes

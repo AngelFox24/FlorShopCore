@@ -2,11 +2,12 @@ import Fluent
 import Vapor
 
 struct CompanyController: RouteCollection {
-    func boot(routes: Vapor.RoutesBuilder) throws {
+    func boot(routes: any RoutesBuilder) throws {
         let companies = routes.grouped("companies")
-        companies.post("sync", use: sync)
-        companies.post(use: save)
+        companies.post("sync", use: self.sync)
+        companies.post(use: self.save)
     }
+    @Sendable
     func sync(req: Request) async throws -> SyncCompanyResponse {
         let request = try req.content.decode(SyncCompanyParameters.self)
         guard try await SyncTimestamp.shared.shouldSync(clientSyncIds: request.syncIds, entity: .company) else {
@@ -28,6 +29,7 @@ struct CompanyController: RouteCollection {
             syncIds: await SyncTimestamp.shared.getUpdatedSyncTokens(entity: .company, clientTokens: request.syncIds)
         )
     }
+    @Sendable
     func save(req: Request) async throws -> DefaultResponse {
         let companyDTO = try req.content.decode(CompanyDTO.self)
         if let company = try await Company.find(companyDTO.id, on: req.db) {
