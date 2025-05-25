@@ -2,7 +2,7 @@ import Fluent
 import Vapor
 
 struct ProductController: RouteCollection {
-    let webSocketManager: WebSocketClientManager
+    let syncManager: SyncManager
     func boot(routes: any RoutesBuilder) throws {
         let products = routes.grouped("products")
         products.post("sync", use: self.sync)
@@ -12,7 +12,7 @@ struct ProductController: RouteCollection {
     @Sendable
     func sync(req: Request) async throws -> SyncProductsResponse {
         let request = try req.content.decode(SyncFromSubsidiaryParameters.self)
-        guard try await SyncTimestamp.shared.shouldSync(clientSyncIds: request.syncIds, entity: .product) else {
+        guard try await syncManager.shouldSync(clientSyncIds: request.syncIds, entity: .product) else {
             return SyncProductsResponse(
                 productsDTOs: [],
                 syncIds: request.syncIds
@@ -28,7 +28,7 @@ struct ProductController: RouteCollection {
         let products = try await query.all()
         return await SyncProductsResponse(
             productsDTOs: products.mapToListProductDTO(),
-            syncIds: products.count == maxPerPage ? request.syncIds : SyncTimestamp.shared.getUpdatedSyncTokens(entity: .product, clientTokens: request.syncIds)
+            syncIds: products.count == maxPerPage ? request.syncIds : syncManager.getUpdatedSyncTokens(entity: .product, clientTokens: request.syncIds)
         )
     }
     @Sendable
@@ -59,11 +59,10 @@ struct ProductController: RouteCollection {
             product.unitPrice = productDTO.unitPrice
             product.$imageUrl.id = try await ImageUrl.find(productDTO.imageUrlId, on: req.db)?.id
             try await product.update(on: req.db)
-            await SyncTimestamp.shared.updateLastSyncDate(to: .product)
+            await syncManager.updateLastSyncDate(to: [.product])
             return DefaultResponse(
                 code: 200,
-                message: "Updated",
-                webSocket: webSocketManager
+                message: "Updated"
             )
         } else {
             guard let subsidiaryId = try await Subsidiary.find(productDTO.subsidiaryId, on: req.db)?.id else {
@@ -90,11 +89,10 @@ struct ProductController: RouteCollection {
                 imageUrlID: try await ImageUrl.find(productDTO.imageUrlId, on: req.db)?.id
             )
             try await productNew.save(on: req.db)
-            await SyncTimestamp.shared.updateLastSyncDate(to: .product)
+            await syncManager.updateLastSyncDate(to: [.product])
             return DefaultResponse(
                 code: 200,
-                message: "Created",
-                webSocket: webSocketManager
+                message: "Created"
             )
         }
     }
@@ -146,8 +144,7 @@ struct ProductController: RouteCollection {
             }
             return DefaultResponse(
                 code: 200,
-                message: "Ok",
-                webSocket: webSocketManager
+                message: "Ok"
             )
         }
     }

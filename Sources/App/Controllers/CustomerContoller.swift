@@ -2,7 +2,7 @@ import Fluent
 import Vapor
 
 struct CustomerContoller: RouteCollection {
-    let webSocketManager: WebSocketClientManager
+    let syncManager: SyncManager
     func boot(routes: any RoutesBuilder) throws {
         let customers = routes.grouped("customers")
         customers.post("sync", use: self.sync)
@@ -12,7 +12,7 @@ struct CustomerContoller: RouteCollection {
     @Sendable
     func sync(req: Request) async throws -> SyncCustomersResponse {
         let request = try req.content.decode(SyncFromCompanyParameters.self)
-        guard try await SyncTimestamp.shared.shouldSync(clientSyncIds: request.syncIds, entity: .customer) else {
+        guard try await syncManager.shouldSync(clientSyncIds: request.syncIds, entity: .customer) else {
             return SyncCustomersResponse(
                 customersDTOs: [],
                 syncIds: request.syncIds
@@ -27,7 +27,7 @@ struct CustomerContoller: RouteCollection {
         let customers = try await query.all()
         return await SyncCustomersResponse(
             customersDTOs: customers.mapToListCustomerDTO(),
-            syncIds: customers.count == maxPerPage ? request.syncIds : SyncTimestamp.shared.getUpdatedSyncTokens(entity: .customer, clientTokens: request.syncIds)
+            syncIds: customers.count == maxPerPage ? request.syncIds : syncManager.getUpdatedSyncTokens(entity: .customer, clientTokens: request.syncIds)
         )
     }
     @Sendable
@@ -57,11 +57,10 @@ struct CustomerContoller: RouteCollection {
             }
             customer.isCreditLimit = customer.isCreditLimitActive ? customer.totalDebt >= customer.creditLimit : false
             try await customer.update(on: req.db)
-            await SyncTimestamp.shared.updateLastSyncDate(to: .customer)
+            await syncManager.updateLastSyncDate(to: [.customer])
             return DefaultResponse(
                 code: 200,
-                message: "Updated",
-                webSocket: webSocketManager
+                message: "Updated"
             )
         } else {
             //Create
@@ -91,11 +90,10 @@ struct CustomerContoller: RouteCollection {
                 imageUrlID: try await ImageUrl.find(customerDTO.imageUrlId, on: req.db)?.id
             )
             try await customerNew.save(on: req.db)
-            await SyncTimestamp.shared.updateLastSyncDate(to: .customer)
+            await syncManager.updateLastSyncDate(to: [.customer])
             return DefaultResponse(
                 code: 200,
-                message: "Created",
-                webSocket: webSocketManager
+                message: "Created"
             )
         }
     }
@@ -125,11 +123,10 @@ struct CustomerContoller: RouteCollection {
                 try await customer.update(on: transaction)
                 return remainingMoney
             }
-            await SyncTimestamp.shared.updateLastSyncDate(to: .sale, .customer)
+            await syncManager.updateLastSyncDate(to: [.sale, .customer])
             return PayCustomerDebtResponse(
                 customerId: payCustomerDebtParameters.customerId,
-                change: remainingMoney,
-                webSocket: webSocketManager
+                change: remainingMoney
             )
         } else {
             print("El cliente no existe")

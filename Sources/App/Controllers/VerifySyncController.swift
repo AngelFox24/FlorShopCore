@@ -2,7 +2,7 @@ import Fluent
 import Vapor
 
 struct VerifySyncController: RouteCollection {
-    let webSocketManager: WebSocketClientManager
+    let syncManager: SyncManager
     func boot(routes: any RoutesBuilder) throws {
         let subsidiaries = routes.grouped("verifySync")
         subsidiaries.post(use: self.getTokens)
@@ -12,17 +12,19 @@ struct VerifySyncController: RouteCollection {
     @Sendable
     func getTokens(req: Request) async throws -> VerifySyncParameters {
         print("Api version 2.0")
-        return await SyncTimestamp.shared.getLastSyncDate()
+        return await syncManager.getLastSyncDate()
     }
     @Sendable
     func handleWebSocket(req: Request, ws: WebSocket) async {
         print("WebSocket version 2.0")
         // Establece un intervalo de ping
         ws.pingInterval = .seconds(10)
-        try? await webSocketManager.addClient(ws)
+        try? await syncManager.addClient(ws: ws)
         
         ws.onClose.whenComplete { _ in
-            Task { await webSocketManager.removeClient(ws) }
+            Task {
+                await syncManager.removeClient(ws: ws)
+            }
         }
     }
 }

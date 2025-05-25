@@ -2,7 +2,7 @@ import Fluent
 import Vapor
 
 struct EmployeeController: RouteCollection {
-    let webSocketManager: WebSocketClientManager
+    let syncManager: SyncManager
     func boot(routes: any RoutesBuilder) throws {
         let employees = routes.grouped("employees")
         employees.post("sync", use: self.sync)
@@ -11,7 +11,7 @@ struct EmployeeController: RouteCollection {
     @Sendable
     func sync(req: Request) async throws -> SyncEmployeesResponse {
         let request = try req.content.decode(SyncFromSubsidiaryParameters.self)
-        guard try await SyncTimestamp.shared.shouldSync(clientSyncIds: request.syncIds, entity: .employee) else {
+        guard try await syncManager.shouldSync(clientSyncIds: request.syncIds, entity: .employee) else {
             return SyncEmployeesResponse(
                 employeesDTOs: [],
                 syncIds: request.syncIds
@@ -26,7 +26,7 @@ struct EmployeeController: RouteCollection {
         let employees = try await query.all()
         return await SyncEmployeesResponse(
             employeesDTOs: employees.mapToListEmployeeDTO(),
-            syncIds: employees.count == maxPerPage ? request.syncIds : SyncTimestamp.shared.getUpdatedSyncTokens(entity: .employee, clientTokens: request.syncIds)
+            syncIds: employees.count == maxPerPage ? request.syncIds : syncManager.getUpdatedSyncTokens(entity: .employee, clientTokens: request.syncIds)
         )
     }
     @Sendable
@@ -53,11 +53,10 @@ struct EmployeeController: RouteCollection {
             employee.active = employeeDTO.active
             employee.$imageUrl.id = try await ImageUrl.find(employeeDTO.imageUrlId, on: req.db)?.id
             try await employee.update(on: req.db)
-            await SyncTimestamp.shared.updateLastSyncDate(to: .employee)
+            await syncManager.updateLastSyncDate(to: [.employee])
             return DefaultResponse(
                 code: 200,
-                message: "Updated",
-                webSocket: webSocketManager
+                message: "Updated"
             )
         } else {
             //Create
@@ -83,11 +82,10 @@ struct EmployeeController: RouteCollection {
                 imageUrlID: try await ImageUrl.find(employeeDTO.imageUrlId, on: req.db)?.id
             )
             try await employeeNew.save(on: req.db)
-            await SyncTimestamp.shared.updateLastSyncDate(to: .employee)
+            await syncManager.updateLastSyncDate(to: [.employee])
             return DefaultResponse(
                 code: 200,
-                message: "Created",
-                webSocket: webSocketManager
+                message: "Created"
             )
         }
     }

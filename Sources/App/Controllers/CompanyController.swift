@@ -2,7 +2,7 @@ import Fluent
 import Vapor
 
 struct CompanyController: RouteCollection {
-    let webSocketManager: WebSocketClientManager
+    let syncManager: SyncManager
     func boot(routes: any RoutesBuilder) throws {
         let companies = routes.grouped("companies")
         companies.post("sync", use: self.sync)
@@ -11,7 +11,7 @@ struct CompanyController: RouteCollection {
     @Sendable
     func sync(req: Request) async throws -> SyncCompanyResponse {
         let request = try req.content.decode(SyncCompanyParameters.self)
-        guard try await SyncTimestamp.shared.shouldSync(clientSyncIds: request.syncIds, entity: .company) else {
+        guard try await syncManager.shouldSync(clientSyncIds: request.syncIds, entity: .company) else {
             return SyncCompanyResponse(
                 companyDTO: nil,
                 syncIds: request.syncIds
@@ -27,7 +27,7 @@ struct CompanyController: RouteCollection {
         }
         return SyncCompanyResponse(
             companyDTO: companyNN.toCompanyDTO(),
-            syncIds: await SyncTimestamp.shared.getUpdatedSyncTokens(entity: .company, clientTokens: request.syncIds)
+            syncIds: await syncManager.getUpdatedSyncTokens(entity: .company, clientTokens: request.syncIds)
         )
     }
     @Sendable
@@ -52,17 +52,15 @@ struct CompanyController: RouteCollection {
             }
             if update {
                 try await company.update(on: req.db)
-                await SyncTimestamp.shared.updateLastSyncDate(to: .company)
+                await syncManager.updateLastSyncDate(to: [.company])
                 return DefaultResponse(
                     code: 200,
-                    message: "Updated",
-                    webSocket: webSocketManager
+                    message: "Updated"
                 )
             } else {
                 return DefaultResponse(
                     code: 200,
-                    message: "Not Updated",
-                    webSocket: webSocketManager
+                    message: "Not Updated"
                 )
             }
         } else {
@@ -75,11 +73,10 @@ struct CompanyController: RouteCollection {
             }
             let companyNew = companyDTO.toCompany()
             try await companyNew.save(on: req.db)
-            await SyncTimestamp.shared.updateLastSyncDate(to: .company)
+            await syncManager.updateLastSyncDate(to: [.company])
             return DefaultResponse(
                 code: 200,
-                message: "Created",
-                webSocket: webSocketManager
+                message: "Created"
             )
         }
     }

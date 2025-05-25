@@ -11,9 +11,7 @@ enum SyncEntities {
     case sale
 }
 
-actor SyncTimestamp {
-    static let shared = SyncTimestamp()  // Singleton
-    
+actor SyncTimestamp {    
     private var lastSyncImage = UUID()
     private var lastSyncCompany = UUID()
     private var lastSyncSubsidiary = UUID()
@@ -24,7 +22,7 @@ actor SyncTimestamp {
     // Solo notifica a un observador externo
     
     // Método para actualizar la última fecha de sincronización
-    func updateLastSyncDate(to syncEntities: SyncEntities...) async {
+    func updateLastSyncDate(to syncEntities: [SyncEntities]) async {
         for entity in syncEntities {
             switch entity {
             case .image:

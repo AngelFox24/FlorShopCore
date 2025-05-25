@@ -83,7 +83,7 @@ extension SaleDetailError: AbortError {
 }
 
 struct SaleController: RouteCollection {
-    let webSocketManager: WebSocketClientManager
+    let syncManager: SyncManager
     func boot(routes: any RoutesBuilder) throws {
         let sales = routes.grouped("sales")
         sales.post("sync", use: self.sync)
@@ -92,7 +92,7 @@ struct SaleController: RouteCollection {
     @Sendable
     func sync(req: Request) async throws -> SyncSalesResponse {
         let request = try req.content.decode(SyncFromSubsidiaryParameters.self)
-        guard try await SyncTimestamp.shared.shouldSync(clientSyncIds: request.syncIds, entity: .sale) else {
+        guard try await syncManager.shouldSync(clientSyncIds: request.syncIds, entity: .sale) else {
             return SyncSalesResponse(
                 salesDTOs: [],
                 syncIds: request.syncIds
@@ -109,7 +109,7 @@ struct SaleController: RouteCollection {
         let sales = try await query.all()
         return await SyncSalesResponse(
             salesDTOs: sales.mapToListSaleDTO(),
-            syncIds: sales.count == maxPerPage ? request.syncIds : SyncTimestamp.shared.getUpdatedSyncTokens(entity: .sale, clientTokens: request.syncIds)
+            syncIds: sales.count == maxPerPage ? request.syncIds : syncManager.getUpdatedSyncTokens(entity: .sale, clientTokens: request.syncIds)
         )
     }
     @Sendable
@@ -192,11 +192,10 @@ struct SaleController: RouteCollection {
                 try await customerEntity.update(on: transaction)
             }
         }
-        await SyncTimestamp.shared.updateLastSyncDate(to: .product, .customer, .sale)
+        await syncManager.updateLastSyncDate(to: [.product, .customer, .sale])
         return DefaultResponse(
             code: 200,
-            message: "Created",
-            webSocket: webSocketManager
+            message: "Created"
         )
     }
 //    private func correctAmount(saleTransactionDTO: SaleTransactionDTO, db: any Database) async throws -> Bool {

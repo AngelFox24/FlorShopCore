@@ -2,7 +2,7 @@ import Fluent
 import Vapor
 
 struct ImageUrlController: RouteCollection {
-    let webSocketManager: WebSocketClientManager
+    let syncManager: SyncManager
     func boot(routes: any RoutesBuilder) throws {
         let imageUrl = routes.grouped("imageUrls")
         imageUrl.post("sync", use: self.sync)
@@ -12,7 +12,7 @@ struct ImageUrlController: RouteCollection {
     @Sendable
     func sync(req: Request) async throws -> SyncImageUrlResponse {
         let request = try req.content.decode(SyncImageParameters.self)
-        guard try await SyncTimestamp.shared.shouldSync(clientSyncIds: request.syncIds, entity: .image) else {
+        guard try await syncManager.shouldSync(clientSyncIds: request.syncIds, entity: .image) else {
             return SyncImageUrlResponse(
                 imagesUrlDTOs: [],
                 syncIds: request.syncIds
@@ -26,7 +26,7 @@ struct ImageUrlController: RouteCollection {
         let images = try await query.all()
         return await SyncImageUrlResponse(
             imagesUrlDTOs: images.mapToListImageURLDTO(),
-            syncIds: images.count == maxPerPage ? request.syncIds : SyncTimestamp.shared.getUpdatedSyncTokens(entity: .image, clientTokens: request.syncIds)
+            syncIds: images.count == maxPerPage ? request.syncIds : syncManager.getUpdatedSyncTokens(entity: .image, clientTokens: request.syncIds)
         )
     }
     @Sendable
@@ -81,7 +81,7 @@ struct ImageUrlController: RouteCollection {
                     }
                 }
                 try await imageUrlNew.save(on: req.db)
-                await SyncTimestamp.shared.updateLastSyncDate(to: .image)
+                await syncManager.updateLastSyncDate(to: [.image])
                 return imageUrlNew.toImageUrlDTO()
             }
         } else if imageUrlDto.imageUrl != "" { //Si no hay imageData debe tener URL
@@ -102,7 +102,7 @@ struct ImageUrlController: RouteCollection {
                 //Create
                 let imageUrlNew = imageUrlDto.toImageUrl()
                 try await imageUrlNew.save(on: req.db)
-                await SyncTimestamp.shared.updateLastSyncDate(to: .image)
+                await syncManager.updateLastSyncDate(to: [.image])
                 return imageUrlNew.toImageUrlDTO()
             }
         } else {

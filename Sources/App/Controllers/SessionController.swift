@@ -2,7 +2,7 @@ import Fluent
 import Vapor
 
 struct SessionController: RouteCollection {
-    let webSocketManager: WebSocketClientManager
+    let syncManager: SyncManager
     func boot(routes: any RoutesBuilder) throws {
         let session = routes.grouped("session")
         session.post("logIn", use: self.logIn)

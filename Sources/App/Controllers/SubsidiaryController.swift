@@ -2,7 +2,7 @@ import Fluent
 import Vapor
 
 struct SubsidiaryController: RouteCollection {
-    let webSocketManager: WebSocketClientManager
+    let syncManager: SyncManager
     func boot(routes: any RoutesBuilder) throws {
         let subsidiaries = routes.grouped("subsidiaries")
         subsidiaries.post("sync", use: self.sync)
@@ -11,7 +11,7 @@ struct SubsidiaryController: RouteCollection {
     @Sendable
     func sync(req: Request) async throws -> SyncSubsidiariesResponse {
         let request = try req.content.decode(SyncFromCompanyParameters.self)
-        guard try await SyncTimestamp.shared.shouldSync(clientSyncIds: request.syncIds, entity: .subsidiary) else {
+        guard try await syncManager.shouldSync(clientSyncIds: request.syncIds, entity: .subsidiary) else {
             return SyncSubsidiariesResponse(
                 subsidiariesDTOs: [],
                 syncIds: request.syncIds
@@ -27,7 +27,7 @@ struct SubsidiaryController: RouteCollection {
         let subsidiaries = try await query.all()
         return await SyncSubsidiariesResponse(
             subsidiariesDTOs: subsidiaries.mapToListSubsidiaryDTO(),
-            syncIds: subsidiaries.count == maxPerPage ? request.syncIds : SyncTimestamp.shared.getUpdatedSyncTokens(entity: .subsidiary, clientTokens: request.syncIds)
+            syncIds: subsidiaries.count == maxPerPage ? request.syncIds : syncManager.getUpdatedSyncTokens(entity: .subsidiary, clientTokens: request.syncIds)
         )
     }
     @Sendable
@@ -50,17 +50,15 @@ struct SubsidiaryController: RouteCollection {
             }
             if update {
                 try await subsidiary.update(on: req.db)
-                await SyncTimestamp.shared.updateLastSyncDate(to: .subsidiary)
+                await syncManager.updateLastSyncDate(to: [.subsidiary])
                 return DefaultResponse(
                     code: 200,
-                    message: "Updated",
-                    webSocket: webSocketManager
+                    message: "Updated"
                 )
             } else {
                 return DefaultResponse(
                     code: 200,
-                    message: "Not Updated",
-                    webSocket: webSocketManager
+                    message: "Not Updated"
                 )
             }
         } else {
@@ -78,11 +76,10 @@ struct SubsidiaryController: RouteCollection {
                 imageUrlID: try await ImageUrl.find(subsidiaryDTO.imageUrlId, on: req.db)?.id
             )
             try await subsidiaryNew.save(on: req.db)
-            await SyncTimestamp.shared.updateLastSyncDate(to: .subsidiary)
+            await syncManager.updateLastSyncDate(to: [.subsidiary])
             return DefaultResponse(
                 code: 200,
-                message: "Created",
-                webSocket: webSocketManager
+                message: "Created"
             )
         }
     }
