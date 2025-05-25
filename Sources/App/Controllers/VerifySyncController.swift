@@ -2,6 +2,7 @@ import Fluent
 import Vapor
 
 struct VerifySyncController: RouteCollection {
+    let webSocketManager: WebSocketClientManager
     func boot(routes: any RoutesBuilder) throws {
         let subsidiaries = routes.grouped("verifySync")
         subsidiaries.post(use: self.getTokens)
@@ -16,6 +17,10 @@ struct VerifySyncController: RouteCollection {
     @Sendable
     func handleWebSocket(req: Request, ws: WebSocket) async {
         print("WebSocket version 2.0")
-        try? await WebSocketClientManager.shared.addClient(ws)
+        try? await webSocketManager.addClient(ws)
+        
+        ws.onClose.whenComplete { _ in
+            Task { await webSocketManager.removeClient(ws) }
+        }
     }
 }

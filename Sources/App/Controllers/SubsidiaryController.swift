@@ -2,6 +2,7 @@ import Fluent
 import Vapor
 
 struct SubsidiaryController: RouteCollection {
+    let webSocketManager: WebSocketClientManager
     func boot(routes: any RoutesBuilder) throws {
         let subsidiaries = routes.grouped("subsidiaries")
         subsidiaries.post("sync", use: self.sync)
@@ -52,12 +53,14 @@ struct SubsidiaryController: RouteCollection {
                 await SyncTimestamp.shared.updateLastSyncDate(to: .subsidiary)
                 return DefaultResponse(
                     code: 200,
-                    message: "Updated"
+                    message: "Updated",
+                    webSocket: webSocketManager
                 )
             } else {
                 return DefaultResponse(
                     code: 200,
-                    message: "Not Updated"
+                    message: "Not Updated",
+                    webSocket: webSocketManager
                 )
             }
         } else {
@@ -78,7 +81,8 @@ struct SubsidiaryController: RouteCollection {
             await SyncTimestamp.shared.updateLastSyncDate(to: .subsidiary)
             return DefaultResponse(
                 code: 200,
-                message: "Created"
+                message: "Created",
+                webSocket: webSocketManager
             )
         }
     }

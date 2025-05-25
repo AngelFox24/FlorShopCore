@@ -8,13 +8,12 @@ struct WebSocketClient {
     var lastPong: Date
 }
 actor WebSocketClientManager {
-    static let shared = WebSocketClientManager()
     private var clients: [WebSocketClient] = []
 
     func addClient(_ ws: WebSocket) async throws {
         let newClient = WebSocketClient(socket: ws, lastPong: Date())
         clients.append(newClient)
-        print("✅ Cliente WebSocket conectado de \(clients.count), id: \(newClient.alias)")
+        print("✅ Cliente WebSocket conectado, id: \(newClient.alias)")
 
         if let syncParameters = encodeSyncParameters(await SyncTimestamp.shared.getLastSyncDate()) {
             try await ws.send(syncParameters)
@@ -23,10 +22,6 @@ actor WebSocketClientManager {
 //        ws.onPong { _, _ in
 //            Task { await self.updatePong(for: ws) }
 //        }
-
-        ws.onClose.whenComplete { _ in
-            Task { await self.removeClient(ws) }
-        }
     }
 
     func updatePong(for ws: WebSocket) {
@@ -38,15 +33,9 @@ actor WebSocketClientManager {
     }
 
     func removeClient(_ ws: WebSocket) {
-        clients.removeAll { client in
-            let remove = client.socket === ws
-            if remove {
-                print("❌ Cliente desconectado de \(clients.count), id: \(client.alias)")
-            } else {
-                print("📌 Este causa no es: \(client.alias)")
-            }
-            return remove
-        }
+        let clientToRemove = clients.filter { $0.socket === ws }.first
+        clients.removeAll { $0.socket === ws}
+        print("❌ Cliente removido: \(String(describing: clientToRemove?.alias))")
     }
 
     func sendPingsAndClean() {

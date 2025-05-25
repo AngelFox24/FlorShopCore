@@ -1,12 +1,35 @@
 import Vapor
 //MARK: Response Parameters
-struct DefaultResponse: Content {
+protocol Shareable {
+    func broadCast(webSocket: WebSocketClientManager)
+}
+extension Shareable {
+    func broadCast(webSocket: WebSocketClientManager) {
+        Task {
+            let syncParameters = await SyncTimestamp.shared.getLastSyncDate()
+            await webSocket.broadcast(syncParameters)
+        }
+    }
+}
+struct DefaultResponse: Content, Shareable {
     let code: Int
     let message: String
+    init(code: Int, message: String, webSocket: WebSocketClientManager) {
+        self.code = code
+        self.message = message
+        if self.code == 200 {
+            broadCast(webSocket: webSocket)
+        }
+    }
 }
-struct PayCustomerDebtResponse: Content {
+struct PayCustomerDebtResponse: Content, Shareable {
     let customerId: UUID
     let change: Int
+    init(customerId: UUID, change: Int, webSocket: WebSocketClientManager) {
+        self.customerId = customerId
+        self.change = change
+        broadCast(webSocket: webSocket)
+    }
 }
 //MARK: Sync Response Parameters
 struct SyncCompanyResponse: Content {

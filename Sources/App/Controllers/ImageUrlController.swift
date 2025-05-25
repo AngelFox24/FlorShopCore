@@ -2,6 +2,7 @@ import Fluent
 import Vapor
 
 struct ImageUrlController: RouteCollection {
+    let webSocketManager: WebSocketClientManager
     func boot(routes: any RoutesBuilder) throws {
         let imageUrl = routes.grouped("imageUrls")
         imageUrl.post("sync", use: self.sync)
@@ -29,7 +30,7 @@ struct ImageUrlController: RouteCollection {
         )
     }
     @Sendable
-    func serveImage(req: Request) throws -> Response {
+    func serveImage(req: Request) async throws -> Response {
         // Extraer el UUID de la URL
         guard let imageIdS = req.parameters.get("imageId") else {
             throw Abort(.badRequest, reason: "No image ID provided")
@@ -41,9 +42,9 @@ struct ImageUrlController: RouteCollection {
             throw Abort(.notFound, reason: "Image not found")
         }
         // Ruta donde se almacenan las imágenes en el servidor
-        let imageDirectory = getPathById(id: imageId)
+        let imageDirectory: String = getPathById(id: imageId)
         // Crear la respuesta con el contenido de la imagen
-        return req.fileio.streamFile(at: imageDirectory)
+        return try await req.fileio.asyncStreamFile(at: imageDirectory)
     }
     @Sendable
     func save(req: Request) async throws -> ImageURLDTO {

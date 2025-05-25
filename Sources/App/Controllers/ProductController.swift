@@ -2,6 +2,7 @@ import Fluent
 import Vapor
 
 struct ProductController: RouteCollection {
+    let webSocketManager: WebSocketClientManager
     func boot(routes: any RoutesBuilder) throws {
         let products = routes.grouped("products")
         products.post("sync", use: self.sync)
@@ -61,7 +62,8 @@ struct ProductController: RouteCollection {
             await SyncTimestamp.shared.updateLastSyncDate(to: .product)
             return DefaultResponse(
                 code: 200,
-                message: "Updated"
+                message: "Updated",
+                webSocket: webSocketManager
             )
         } else {
             guard let subsidiaryId = try await Subsidiary.find(productDTO.subsidiaryId, on: req.db)?.id else {
@@ -91,7 +93,8 @@ struct ProductController: RouteCollection {
             await SyncTimestamp.shared.updateLastSyncDate(to: .product)
             return DefaultResponse(
                 code: 200,
-                message: "Created"
+                message: "Created",
+                webSocket: webSocketManager
             )
         }
     }
@@ -143,7 +146,8 @@ struct ProductController: RouteCollection {
             }
             return DefaultResponse(
                 code: 200,
-                message: "Ok"
+                message: "Ok",
+                webSocket: webSocketManager
             )
         }
     }

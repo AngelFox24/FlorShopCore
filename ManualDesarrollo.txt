@@ -3,3 +3,7 @@ Migrar Manualmente (Con Borrado de BD)
 - docker compose up -d
 - (correr la app desde xcode)
 
+Fuentes
+
+- https://github.com/salvaMsanchez/Vapor-WebSocketAPI
+

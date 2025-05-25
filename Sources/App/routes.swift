@@ -2,16 +2,14 @@ import Fluent
 import Vapor
 
 func routes(_ app: Application) throws {
-    app.get { req async in
-        "FlorShopApi v2"
-    }
-    try app.register(collection: VerifySyncController())
-    try app.register(collection: SessionController())
-    try app.register(collection: CompanyController())
-    try app.register(collection: ImageUrlController())
-    try app.register(collection: SubsidiaryController())
-    try app.register(collection: ProductController())
-    try app.register(collection: CustomerContoller())
-    try app.register(collection: EmployeeController())
-    try app.register(collection: SaleController())
+    let webSocket = WebSocketClientManager()
+    try app.register(collection: VerifySyncController(webSocketManager: webSocket))
+    try app.register(collection: SessionController(webSocketManager: webSocket))
+    try app.register(collection: CompanyController(webSocketManager: webSocket))
+    try app.register(collection: ImageUrlController(webSocketManager: webSocket))
+    try app.register(collection: SubsidiaryController(webSocketManager: webSocket))
+    try app.register(collection: ProductController(webSocketManager: webSocket))
+    try app.register(collection: CustomerContoller(webSocketManager: webSocket))
+    try app.register(collection: EmployeeController(webSocketManager: webSocket))
+    try app.register(collection: SaleController(webSocketManager: webSocket))
 }

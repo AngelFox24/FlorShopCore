@@ -24,24 +24,25 @@ actor SyncTimestamp {
     // Solo notifica a un observador externo
     
     // Método para actualizar la última fecha de sincronización
-    func updateLastSyncDate(to entity: SyncEntities) async {
-        switch entity {
-        case .image:
-            lastSyncImage = UUID()
-        case .company:
-            lastSyncCompany = UUID()
-        case .subsidiary:
-            lastSyncSubsidiary = UUID()
-        case .customer:
-            lastSyncCustomer = UUID()
-        case .product:
-            lastSyncProduct = UUID()
-        case .employee:
-            lastSyncEmployee = UUID()
-        case .sale:
-            lastSyncSale = UUID()
+    func updateLastSyncDate(to syncEntities: SyncEntities...) async {
+        for entity in syncEntities {
+            switch entity {
+            case .image:
+                lastSyncImage = UUID()
+            case .company:
+                lastSyncCompany = UUID()
+            case .subsidiary:
+                lastSyncSubsidiary = UUID()
+            case .customer:
+                lastSyncCustomer = UUID()
+            case .product:
+                lastSyncProduct = UUID()
+            case .employee:
+                lastSyncEmployee = UUID()
+            case .sale:
+                lastSyncSale = UUID()
+            }
         }
-        await WebSocketClientManager.shared.broadcast(getLastSyncDate())
     }
     // Método para obtener la última fecha de sincronización
     func getLastSyncDate() -> VerifySyncParameters {

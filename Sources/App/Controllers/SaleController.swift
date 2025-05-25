@@ -83,6 +83,7 @@ extension SaleDetailError: AbortError {
 }
 
 struct SaleController: RouteCollection {
+    let webSocketManager: WebSocketClientManager
     func boot(routes: any RoutesBuilder) throws {
         let sales = routes.grouped("sales")
         sales.post("sync", use: self.sync)
@@ -191,12 +192,11 @@ struct SaleController: RouteCollection {
                 try await customerEntity.update(on: transaction)
             }
         }
-        await SyncTimestamp.shared.updateLastSyncDate(to: .product)
-        await SyncTimestamp.shared.updateLastSyncDate(to: .customer)
-        await SyncTimestamp.shared.updateLastSyncDate(to: .sale)
+        await SyncTimestamp.shared.updateLastSyncDate(to: .product, .customer, .sale)
         return DefaultResponse(
             code: 200,
-            message: "Created"
+            message: "Created",
+            webSocket: webSocketManager
         )
     }
 //    private func correctAmount(saleTransactionDTO: SaleTransactionDTO, db: any Database) async throws -> Bool {

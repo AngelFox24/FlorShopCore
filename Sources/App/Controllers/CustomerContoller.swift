@@ -2,6 +2,7 @@ import Fluent
 import Vapor
 
 struct CustomerContoller: RouteCollection {
+    let webSocketManager: WebSocketClientManager
     func boot(routes: any RoutesBuilder) throws {
         let customers = routes.grouped("customers")
         customers.post("sync", use: self.sync)
@@ -59,7 +60,8 @@ struct CustomerContoller: RouteCollection {
             await SyncTimestamp.shared.updateLastSyncDate(to: .customer)
             return DefaultResponse(
                 code: 200,
-                message: "Updated"
+                message: "Updated",
+                webSocket: webSocketManager
             )
         } else {
             //Create
@@ -92,7 +94,8 @@ struct CustomerContoller: RouteCollection {
             await SyncTimestamp.shared.updateLastSyncDate(to: .customer)
             return DefaultResponse(
                 code: 200,
-                message: "Created"
+                message: "Created",
+                webSocket: webSocketManager
             )
         }
     }
@@ -122,11 +125,11 @@ struct CustomerContoller: RouteCollection {
                 try await customer.update(on: transaction)
                 return remainingMoney
             }
-            await SyncTimestamp.shared.updateLastSyncDate(to: .sale)
-            await SyncTimestamp.shared.updateLastSyncDate(to: .customer)
+            await SyncTimestamp.shared.updateLastSyncDate(to: .sale, .customer)
             return PayCustomerDebtResponse(
                 customerId: payCustomerDebtParameters.customerId,
-                change: remainingMoney
+                change: remainingMoney,
+                webSocket: webSocketManager
             )
         } else {
             print("El cliente no existe")
