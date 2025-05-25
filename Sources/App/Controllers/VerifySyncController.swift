@@ -17,6 +17,8 @@ struct VerifySyncController: RouteCollection {
     @Sendable
     func handleWebSocket(req: Request, ws: WebSocket) async {
         print("WebSocket version 2.0")
+        // Establece un intervalo de ping
+        ws.pingInterval = .seconds(10)
         try? await webSocketManager.addClient(ws)
         
         ws.onClose.whenComplete { _ in
