@@ -60,10 +60,7 @@ struct ProductController: RouteCollection {
             product.$imageUrl.id = try await ImageUrl.find(productDTO.imageUrlId, on: req.db)?.id
             try await product.update(on: req.db)
             await syncManager.updateLastSyncDate(to: [.product])
-            return DefaultResponse(
-                code: 200,
-                message: "Updated"
-            )
+            return DefaultResponse(message: "Updated")
         } else {
             guard let subsidiaryId = try await Subsidiary.find(productDTO.subsidiaryId, on: req.db)?.id else {
                 throw Abort(.badRequest, reason: "La subsidiaria no existe")
@@ -90,10 +87,7 @@ struct ProductController: RouteCollection {
             )
             try await productNew.save(on: req.db)
             await syncManager.updateLastSyncDate(to: [.product])
-            return DefaultResponse(
-                code: 200,
-                message: "Created"
-            )
+            return DefaultResponse(message: "Created")
         }
     }
     private func productNameExist(productDTO: ProductDTO, db: any Database) async throws -> Bool {
@@ -142,10 +136,7 @@ struct ProductController: RouteCollection {
                 let product = productDTO.toProduct()
                 try await product.save(on: transaction)
             }
-            return DefaultResponse(
-                code: 200,
-                message: "Ok"
-            )
+            return DefaultResponse(message: "Created")
         }
     }
 }

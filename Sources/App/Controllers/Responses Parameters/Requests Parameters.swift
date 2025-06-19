@@ -4,6 +4,13 @@ struct LogInParameters: Content {
     let username: String
     let password: String
 }
+struct RegisterParameters: Content {
+    let company: CompanyDTO
+    let subsidiaryImage: ImageURLDTO
+    let subsidiary: SubsidiaryDTO
+    let employeeImage: ImageURLDTO
+    let employee: EmployeeDTO
+}
 struct SessionConfig: Content {
     let companyId: UUID
     let subsidiaryId: UUID

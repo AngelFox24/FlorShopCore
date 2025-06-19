@@ -58,10 +58,7 @@ struct CustomerContoller: RouteCollection {
             customer.isCreditLimit = customer.isCreditLimitActive ? customer.totalDebt >= customer.creditLimit : false
             try await customer.update(on: req.db)
             await syncManager.updateLastSyncDate(to: [.customer])
-            return DefaultResponse(
-                code: 200,
-                message: "Updated"
-            )
+            return DefaultResponse(message: "Updated")
         } else {
             //Create
             guard let companyID = try await Company.find(customerDTO.companyID, on: req.db)?.id else {
@@ -91,10 +88,7 @@ struct CustomerContoller: RouteCollection {
             )
             try await customerNew.save(on: req.db)
             await syncManager.updateLastSyncDate(to: [.customer])
-            return DefaultResponse(
-                code: 200,
-                message: "Created"
-            )
+            return DefaultResponse(message: "Created")
         }
     }
     @Sendable

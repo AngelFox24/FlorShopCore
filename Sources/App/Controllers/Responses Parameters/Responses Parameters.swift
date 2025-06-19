@@ -3,6 +3,10 @@ import Vapor
 struct DefaultResponse: Content {
     let code: Int
     let message: String
+    init(code: Int = 200, message: String = "OK") {
+        self.code = code
+        self.message = message
+    }
 }
 struct PayCustomerDebtResponse: Content {
     let customerId: UUID

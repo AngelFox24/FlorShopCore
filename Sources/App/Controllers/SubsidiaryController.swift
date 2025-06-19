@@ -51,15 +51,9 @@ struct SubsidiaryController: RouteCollection {
             if update {
                 try await subsidiary.update(on: req.db)
                 await syncManager.updateLastSyncDate(to: [.subsidiary])
-                return DefaultResponse(
-                    code: 200,
-                    message: "Updated"
-                )
+                return DefaultResponse(message: "Updated")
             } else {
-                return DefaultResponse(
-                    code: 200,
-                    message: "Not Updated"
-                )
+                return DefaultResponse(message: "Not Updated")
             }
         } else {
             //Create
@@ -77,10 +71,7 @@ struct SubsidiaryController: RouteCollection {
             )
             try await subsidiaryNew.save(on: req.db)
             await syncManager.updateLastSyncDate(to: [.subsidiary])
-            return DefaultResponse(
-                code: 200,
-                message: "Created"
-            )
+            return DefaultResponse(message: "Created")
         }
     }
     private func subsidiaryNameExist(subsidiaryDTO: SubsidiaryDTO, db: any Database) async throws -> Bool {

@@ -53,15 +53,9 @@ struct CompanyController: RouteCollection {
             if update {
                 try await company.update(on: req.db)
                 await syncManager.updateLastSyncDate(to: [.company])
-                return DefaultResponse(
-                    code: 200,
-                    message: "Updated"
-                )
+                return DefaultResponse(message: "Updated")
             } else {
-                return DefaultResponse(
-                    code: 200,
-                    message: "Not Updated"
-                )
+                return DefaultResponse(message: "Not Updated")
             }
         } else {
             //Create
@@ -74,10 +68,7 @@ struct CompanyController: RouteCollection {
             let companyNew = companyDTO.toCompany()
             try await companyNew.save(on: req.db)
             await syncManager.updateLastSyncDate(to: [.company])
-            return DefaultResponse(
-                code: 200,
-                message: "Created"
-            )
+            return DefaultResponse(message: "Created")
         }
     }
     private func companyNameExist(companyDTO: CompanyDTO, db: any Database) async throws -> Bool {

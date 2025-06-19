@@ -54,10 +54,7 @@ struct EmployeeController: RouteCollection {
             employee.$imageUrl.id = try await ImageUrl.find(employeeDTO.imageUrlId, on: req.db)?.id
             try await employee.update(on: req.db)
             await syncManager.updateLastSyncDate(to: [.employee])
-            return DefaultResponse(
-                code: 200,
-                message: "Updated"
-            )
+            return DefaultResponse(message: "Updated")
         } else {
             //Create
             guard let subsidiaryId = try await Subsidiary.find(employeeDTO.subsidiaryID, on: req.db)?.id else {
@@ -83,10 +80,7 @@ struct EmployeeController: RouteCollection {
             )
             try await employeeNew.save(on: req.db)
             await syncManager.updateLastSyncDate(to: [.employee])
-            return DefaultResponse(
-                code: 200,
-                message: "Created"
-            )
+            return DefaultResponse(message: "Created")
         }
     }
     private func employeeUserNameExist(employeeDTO: EmployeeDTO, db: any Database) async throws -> Bool {
