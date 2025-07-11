@@ -6,9 +6,9 @@ struct LogInParameters: Content {
 }
 struct RegisterParameters: Content {
     let company: CompanyDTO
-    let subsidiaryImage: ImageURLDTO
+    let subsidiaryImage: ImageURLDTO?
     let subsidiary: SubsidiaryDTO
-    let employeeImage: ImageURLDTO
+    let employeeImage: ImageURLDTO?
     let employee: EmployeeDTO
 }
 struct SessionConfig: Content {

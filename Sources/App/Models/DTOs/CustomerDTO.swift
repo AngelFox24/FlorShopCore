@@ -25,7 +25,7 @@ struct CustomerDTO: Content {
     let phoneNumber: String
     let creditLimit: Int
     let companyID: UUID
-    let imageUrlId: UUID?
+    let imageUrl: ImageURLDTO?
     let createdAt: Date?
     let updatedAt: Date?
 }

@@ -12,7 +12,7 @@ struct ProductDTO: Content {
     let unitCost: Int
     let unitPrice: Int
     let subsidiaryId: UUID
-    let imageUrlId: UUID?
+    let imageUrl: ImageURLDTO?
     let createdAt: Date?
     let updatedAt: Date?
 }

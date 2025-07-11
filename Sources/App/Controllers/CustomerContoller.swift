@@ -3,6 +3,7 @@ import Vapor
 
 struct CustomerContoller: RouteCollection {
     let syncManager: SyncManager
+    let imageUrlService: ImageUrlService
     func boot(routes: any RoutesBuilder) throws {
         let customers = routes.grouped("customers")
         customers.post("sync", use: self.sync)
@@ -47,7 +48,7 @@ struct CustomerContoller: RouteCollection {
             customer.isCreditLimitActive = customerDTO.isCreditLimitActive
             customer.isDateLimitActive = customerDTO.isDateLimitActive
             customer.phoneNumber = customerDTO.phoneNumber
-            customer.$imageUrl.id = try await ImageUrl.find(customerDTO.imageUrlId, on: req.db)?.id //Solo se registra Id porque la imagen se guarda en ImageUrlController
+            customer.$imageUrl.id = try await imageUrlService.save(req: req, imageUrlDto: customerDTO.imageUrl) //Solo se registra Id porque la imagen se guarda en ImageUrlController
             if customerDTO.isDateLimitActive && customer.totalDebt > 0, let firstDatePurchaseWithCredit = customer.firstDatePurchaseWithCredit {
                 var calendar = Calendar.current
                 calendar.timeZone = TimeZone(identifier: "UTC")!
@@ -84,7 +85,7 @@ struct CustomerContoller: RouteCollection {
                 phoneNumber: customerDTO.phoneNumber,
                 creditLimit: customerDTO.creditLimit,
                 companyID: companyID,
-                imageUrlID: try await ImageUrl.find(customerDTO.imageUrlId, on: req.db)?.id
+                imageUrlID: try await imageUrlService.save(req: req, imageUrlDto: customerDTO.imageUrl)
             )
             try await customerNew.save(on: req.db)
             await syncManager.updateLastSyncDate(to: [.customer])

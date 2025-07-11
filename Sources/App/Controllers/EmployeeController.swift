@@ -3,6 +3,7 @@ import Vapor
 
 struct EmployeeController: RouteCollection {
     let syncManager: SyncManager
+    let imageUrlService: ImageUrlService
     func boot(routes: any RoutesBuilder) throws {
         let employees = routes.grouped("employees")
         employees.post("sync", use: self.sync)
@@ -51,7 +52,7 @@ struct EmployeeController: RouteCollection {
             employee.phoneNumber = employeeDTO.phoneNumber
             employee.role = employeeDTO.role
             employee.active = employeeDTO.active
-            employee.$imageUrl.id = try await ImageUrl.find(employeeDTO.imageUrlId, on: req.db)?.id
+            employee.$imageUrl.id = try await imageUrlService.save(req: req, imageUrlDto: employeeDTO.imageUrl)
             try await employee.update(on: req.db)
             await syncManager.updateLastSyncDate(to: [.employee])
             return DefaultResponse(message: "Updated")
@@ -76,7 +77,7 @@ struct EmployeeController: RouteCollection {
                 role: employeeDTO.role,
                 active: employeeDTO.active,
                 subsidiaryID: subsidiaryId,
-                imageUrlID: try await ImageUrl.find(employeeDTO.imageUrlId, on: req.db)?.id
+                imageUrlID: try await imageUrlService.save(req: req, imageUrlDto: employeeDTO.imageUrl)
             )
             try await employeeNew.save(on: req.db)
             await syncManager.updateLastSyncDate(to: [.employee])

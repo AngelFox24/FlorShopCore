@@ -34,14 +34,16 @@ struct SessionController: RouteCollection {
         )
     }
     @Sendable
-    func register(req: Request) async throws -> DefaultResponse {
+    func register(req: Request) async throws -> SessionConfig {
         let registerParameters = try req.content.decode(RegisterParameters.self)
-        guard try await Company.query(on: req.db).first() != nil else {
+        guard try await Company.query(on: req.db).first() == nil else {
             throw Abort(.badRequest, reason: "No se puede registrar mas de una empresa")
         }
+        let companyId = UUID()
+        let subsidiaryId = UUID()
+        let employeeId = UUID()
         try await req.db.transaction { transaction in
             //Registramos la compañia
-            let companyId = UUID()
             let newCompany = Company(
                 id: companyId,
                 companyName: registerParameters.company.companyName,
@@ -49,15 +51,17 @@ struct SessionController: RouteCollection {
             )
             try await newCompany.save(on: transaction)
             //Registramos la imagen de la subsidiaria
-            let subsidiaryImageId = UUID()
-            let newSubsidiaryImage = ImageUrl(
-                id: subsidiaryImageId,
-                imageUrl: registerParameters.subsidiaryImage.imageUrl,
-                imageHash: registerParameters.subsidiaryImage.imageHash
-            )
-            try await newSubsidiaryImage.save(on: transaction)
+            var subsidiaryImageId: UUID? = nil
+            if let subsidiaryImage = registerParameters.subsidiaryImage {
+                subsidiaryImageId = UUID()
+                let newSubsidiaryImage = ImageUrl(
+                    id: subsidiaryImageId,
+                    imageUrl: subsidiaryImage.imageUrl,
+                    imageHash: subsidiaryImage.imageHash
+                )
+                try await newSubsidiaryImage.save(on: transaction)
+            }
             //Registramos la subsidiaria
-            let subsidiaryId = UUID()
             let newSubsidiary = Subsidiary(
                 id: subsidiaryId,
                 name: registerParameters.subsidiary.name,
@@ -66,15 +70,17 @@ struct SessionController: RouteCollection {
             )
             try await newSubsidiary.save(on: transaction)
             //Registramos la imagen del empleado
-            let employeeImageId = UUID()
-            let newEmployeeImage = ImageUrl(
-                id: employeeImageId,
-                imageUrl: registerParameters.subsidiaryImage.imageUrl,
-                imageHash: registerParameters.subsidiaryImage.imageHash
-            )
-            try await newEmployeeImage.save(on: transaction)
+            var employeeImageId: UUID? = nil
+            if let employeeImage = registerParameters.employeeImage {
+                employeeImageId = UUID()
+                let newEmployeeImage = ImageUrl(
+                    id: employeeImageId,
+                    imageUrl: employeeImage.imageUrl,
+                    imageHash: employeeImage.imageHash
+                )
+                try await newEmployeeImage.save(on: transaction)
+            }
             //Registramos al empleado
-            let employeeId = UUID()
             let newEmployee = Employee(
                 id: employeeId,
                 user: registerParameters.employee.user,
@@ -90,6 +96,10 @@ struct SessionController: RouteCollection {
             try await newEmployee.save(on: transaction)
         }
         await syncManager.updateLastSyncDate(to: [.company, .subsidiary, .image, .employee])
-        return DefaultResponse(message: "Created")
+        return SessionConfig(
+            companyId: companyId,
+            subsidiaryId: subsidiaryId,
+            employeeId: employeeId
+        )
     }
 }

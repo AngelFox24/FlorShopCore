@@ -20,7 +20,7 @@ extension Product {
             unitCost: unitCost,
             unitPrice: unitPrice,
             subsidiaryId: self.$subsidiary.id,
-            imageUrlId: imageUrl?.id,
+            imageUrl: imageUrl?.toImageUrlDTO(),
             createdAt: createdAt,
             updatedAt: updatedAt
         )
@@ -70,7 +70,7 @@ extension Customer {
             phoneNumber: phoneNumber,
             creditLimit: creditLimit,
             companyID: self.$company.id,
-            imageUrlId: imageUrl?.id,
+            imageUrl: imageUrl?.toImageUrlDTO(),
             createdAt: createdAt,
             updatedAt: updatedAt
         )
@@ -119,7 +119,7 @@ extension Subsidiary {
             id: id!,
             name: name,
             companyID: self.$company.id,
-            imageUrlId: imageUrl?.id,
+            imageUrl: imageUrl?.toImageUrlDTO(),
             createdAt: createdAt,
             updatedAt: updatedAt
         )
@@ -138,7 +138,7 @@ extension Employee {
             role: role,
             active: active,
             subsidiaryID: self.$subsidiary.id,
-            imageUrlId: imageUrl?.id,
+            imageUrl: imageUrl?.toImageUrlDTO(),
             createdAt: createdAt,
             updatedAt: updatedAt
         )
@@ -158,7 +158,7 @@ extension ProductDTO {
             unitCost: unitCost,
             unitPrice: unitPrice,
             subsidiaryID: subsidiaryId,
-            imageUrlID: imageUrlId
+            imageUrlID: imageUrl?.id
         )
     }
 }
@@ -169,7 +169,7 @@ extension SubsidiaryDTO {
             id: id,
             name: name,
             companyID: companyID,
-            imageUrlID: imageUrlId
+            imageUrlID: imageUrl?.id
         )
     }
 }
@@ -206,7 +206,7 @@ extension EmployeeDTO {
             role: role,
             active: active,
             subsidiaryID: subsidiaryID,
-            imageUrlID: imageUrlId
+            imageUrlID: imageUrl?.id
         )
     }
 }
@@ -230,7 +230,7 @@ extension CustomerDTO {
             phoneNumber: phoneNumber,
             creditLimit: creditLimit,
             companyID: companyID,
-            imageUrlID: imageUrlId
+            imageUrlID: imageUrl?.id
         )
     }
 }

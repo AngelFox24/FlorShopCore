@@ -11,7 +11,7 @@ struct EmployeeDTO: Content {
     let role: String
     let active: Bool
     let subsidiaryID: UUID
-    let imageUrlId: UUID?
+    let imageUrl: ImageURLDTO?
     let createdAt: Date?
     let updatedAt: Date?
 }

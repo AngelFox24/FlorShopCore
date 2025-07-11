@@ -3,6 +3,7 @@ import Vapor
 
 struct SubsidiaryController: RouteCollection {
     let syncManager: SyncManager
+    let imageUrlService: ImageUrlService
     func boot(routes: any RoutesBuilder) throws {
         let subsidiaries = routes.grouped("subsidiaries")
         subsidiaries.post("sync", use: self.sync)
@@ -44,8 +45,9 @@ struct SubsidiaryController: RouteCollection {
                 subsidiary.name = subsidiaryDTO.name
                 update = true
             }
-            if subsidiary.$imageUrl.id != subsidiaryDTO.imageUrlId {
-                subsidiary.$imageUrl.id = try await ImageUrl.find(subsidiaryDTO.imageUrlId, on: req.db)?.id
+            let imageId = try await self.imageUrlService.save(req: req, imageUrlDto: subsidiaryDTO.imageUrl)
+            if subsidiary.$imageUrl.id != imageId {
+                subsidiary.$imageUrl.id = imageId
                 update = true
             }
             if update {
@@ -67,7 +69,7 @@ struct SubsidiaryController: RouteCollection {
                 id: UUID(),
                 name: subsidiaryDTO.name,
                 companyID: companyId,
-                imageUrlID: try await ImageUrl.find(subsidiaryDTO.imageUrlId, on: req.db)?.id
+                imageUrlID: try await self.imageUrlService.save(req: req, imageUrlDto: subsidiaryDTO.imageUrl)
             )
             try await subsidiaryNew.save(on: req.db)
             await syncManager.updateLastSyncDate(to: [.subsidiary])

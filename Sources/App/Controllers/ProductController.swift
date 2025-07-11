@@ -3,6 +3,7 @@ import Vapor
 
 struct ProductController: RouteCollection {
     let syncManager: SyncManager
+    let imageUrlService: ImageUrlService
     func boot(routes: any RoutesBuilder) throws {
         let products = routes.grouped("products")
         products.post("sync", use: self.sync)
@@ -57,7 +58,7 @@ struct ProductController: RouteCollection {
             product.unitType = productDTO.unitType
             product.unitCost = productDTO.unitCost
             product.unitPrice = productDTO.unitPrice
-            product.$imageUrl.id = try await ImageUrl.find(productDTO.imageUrlId, on: req.db)?.id
+            product.$imageUrl.id = try await imageUrlService.save(req: req, imageUrlDto: productDTO.imageUrl)
             try await product.update(on: req.db)
             await syncManager.updateLastSyncDate(to: [.product])
             return DefaultResponse(message: "Updated")
@@ -83,7 +84,7 @@ struct ProductController: RouteCollection {
                 unitCost: productDTO.unitCost,
                 unitPrice: productDTO.unitPrice,
                 subsidiaryID: subsidiaryId,
-                imageUrlID: try await ImageUrl.find(productDTO.imageUrlId, on: req.db)?.id
+                imageUrlID: try await imageUrlService.save(req: req, imageUrlDto: productDTO.imageUrl)
             )
             try await productNew.save(on: req.db)
             await syncManager.updateLastSyncDate(to: [.product])
@@ -129,7 +130,7 @@ struct ProductController: RouteCollection {
         return try await req.db.transaction { transaction in
             // Iterar sobre cada producto y guardarlo
             for productDTO in productsDTO {
-                let _ = productDTO.imageUrlId
+                let _ = productDTO.imageUrl
 //                if let imageUrl = imageUrlDTO?.toImageUrl() {
 //                    try await imageUrl.save(on: transaction)
 //                }
