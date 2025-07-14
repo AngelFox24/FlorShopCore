@@ -11,6 +11,7 @@ struct CreateSaleDetail: AsyncMigration {
             .field("unitType", .string, .required)
             .field("unitCost", .int, .required)
             .field("unitPrice", .int, .required)
+            .field("syncToken", .int64, .required, .sql(.default(0)))
             .field("sale_id", .uuid, .required, .references("sales", "id"))
             .field("imageUrl_id", .uuid, .references("imageUrls", "id"))
             .field("created_at", .datetime)

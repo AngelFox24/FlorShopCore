@@ -1,7 +1,7 @@
 import Foundation
 import Vapor
 
-struct ProductDTO: Content {
+struct ProductOutputDTO: Content {
     let id: UUID
     let productName: String
     let barCode: String
@@ -11,8 +11,9 @@ struct ProductDTO: Content {
     let unitType: String
     let unitCost: Int
     let unitPrice: Int
+    let syncToken: Int64
     let subsidiaryId: UUID
-    let imageUrl: ImageURLDTO?
-    let createdAt: Date?
-    let updatedAt: Date?
+    let imageUrlId: UUID?
+    let createdAt: Date
+    let updatedAt: Date
 }

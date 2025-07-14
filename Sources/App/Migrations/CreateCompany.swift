@@ -6,6 +6,7 @@ struct CreateCompany: AsyncMigration {
             .id()
             .field("companyName", .string, .required)
             .field("ruc", .string)
+            .field("syncToken", .int64, .required, .sql(.default(0)))
             .field("created_at", .datetime)
             .field("updated_at", .datetime)
             .create()

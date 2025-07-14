@@ -34,5 +34,5 @@ public func configure(_ app: Application) async throws {
     //No espera a que la migracion se haga
 //    try app.autoMigrate().get()
     // register routes
-    try routes(app)
+    try await routes(app)
 }

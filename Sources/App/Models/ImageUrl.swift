@@ -9,7 +9,7 @@ import Fluent
 import Foundation
 import struct Foundation.UUID
 
-final class ImageUrl: Model, @unchecked Sendable {
+final class ImageUrl: Model, Syncronizable, @unchecked Sendable {
     static let schema = "imageUrls"
     
     @ID(key: .id)
@@ -19,7 +19,10 @@ final class ImageUrl: Model, @unchecked Sendable {
     var imageUrl: String
     @Field(key: "imageHash")
     var imageHash: String
+    @Field(key: "syncToken")
+    var syncToken: Int64
     
+    //MARK: Timestamps
     @Timestamp(key: "created_at", on: .create)
     var createdAt: Date?
     @Timestamp(key: "updated_at", on: .update)
@@ -46,10 +49,12 @@ final class ImageUrl: Model, @unchecked Sendable {
     init(
         id: UUID? = nil,
         imageUrl: String,
-        imageHash: String
+        imageHash: String,
+        syncToken: Int64
     ) {
         self.id = id
         self.imageUrl = imageUrl
         self.imageHash = imageHash
+        self.syncToken = syncToken
     }
 }

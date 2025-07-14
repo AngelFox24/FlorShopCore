@@ -5,100 +5,59 @@ struct CompanyController: RouteCollection {
     let syncManager: SyncManager
     func boot(routes: any RoutesBuilder) throws {
         let companies = routes.grouped("companies")
-        companies.post("sync", use: self.sync)
+//        companies.post("sync", use: self.sync)
         companies.post(use: self.save)
     }
     @Sendable
-    func sync(req: Request) async throws -> SyncCompanyResponse {
-        let request = try req.content.decode(SyncCompanyParameters.self)
-        guard try await syncManager.shouldSync(clientSyncIds: request.syncIds, entity: .company) else {
-            return SyncCompanyResponse(
-                companyDTO: nil,
-                syncIds: request.syncIds
-            )
-        }
-        let query = Company.query(on: req.db)
-            .filter(\.$updatedAt >= request.updatedSince)
-            .sort(\.$updatedAt, .ascending)
-            .limit(1)
-        let company = try await query.all().first
-        guard let companyNN = company else {
-            throw Abort(.badRequest, reason: "No existe compania en la BD")
-        }
-        return SyncCompanyResponse(
-            companyDTO: companyNN.toCompanyDTO(),
-            syncIds: await syncManager.getUpdatedSyncTokens(entity: .company, clientTokens: request.syncIds)
-        )
-    }
-    @Sendable
     func save(req: Request) async throws -> DefaultResponse {
-        let companyDTO = try req.content.decode(CompanyDTO.self)
-        if let company = try await Company.find(companyDTO.id, on: req.db) {
-            //Update
-            var update = false
-            if company.companyName != companyDTO.companyName {
-                guard try await !companyNameExist(companyDTO: companyDTO, db: req.db) else {
-                    throw Abort(.badRequest, reason: "El nombre de la compañia ya existe")
-                }
-                company.companyName = companyDTO.companyName
-                update = true
+        let companyDTO = try req.content.decode(CompanyInputDTO.self).clean()
+        try self.validateInput(companyDTO: companyDTO)
+        let responseText: String
+        
+        if let companyId = companyDTO.id { //Update: If the client send Id is for update
+            guard let company = try await Company.find(companyId, on: req.db) else {
+                throw Abort(.badRequest, reason: "La compañia no existe para actualizar")
             }
-            if company.ruc != companyDTO.ruc {
-                guard try await !companyRucExist(companyDTO: companyDTO, db: req.db) else {
-                    throw Abort(.badRequest, reason: "El RUC de la compañia ya existe")
-                }
-                company.ruc = companyDTO.ruc
-                update = true
+            guard !companyDTO.isEqual(to: company) else {
+                return DefaultResponse(message: "Not Updated, is equal")
             }
-            if update {
-                try await company.update(on: req.db)
-                await syncManager.updateLastSyncDate(to: [.company])
-                return DefaultResponse(message: "Updated")
-            } else {
-                return DefaultResponse(message: "Not Updated")
+            company.companyName = companyDTO.companyName
+            company.ruc = companyDTO.ruc
+            company.syncToken = await syncManager.nextToken()
+            try await company.update(on: req.db)
+            responseText = "Updated"
+        } else { //Create: If client don't send Id is for Create a new item
+            guard try await !self.validateExist(dto: companyDTO, db: req.db) else {
+                throw Abort(.badRequest, reason: "El nombre o el RUC de la compañia ya existen")
             }
-        } else {
-            //Create
-            guard try await !companyNameExist(companyDTO: companyDTO, db: req.db) else {
-                throw Abort(.badRequest, reason: "El nombre de la compañia ya existe")
-            }
-            guard try await !companyRucExist(companyDTO: companyDTO, db: req.db) else {
-                throw Abort(.badRequest, reason: "El RUC de la compañia ya existe")
-            }
-            let companyNew = companyDTO.toCompany()
+            let companyNew = Company(
+                id: UUID(),
+                companyName: companyDTO.companyName,
+                ruc: companyDTO.ruc,
+                syncToken: await syncManager.nextToken()
+            )
             try await companyNew.save(on: req.db)
-            await syncManager.updateLastSyncDate(to: [.company])
-            return DefaultResponse(message: "Created")
+            responseText = "Created"
         }
+        await syncManager.sendSyncData() //Se envia un mensaje a todos para que soncronizen.
+        return DefaultResponse(message: responseText)
     }
-    private func companyNameExist(companyDTO: CompanyDTO, db: any Database) async throws -> Bool {
+    private func validateInput(companyDTO: CompanyInputDTO) throws {
         guard companyDTO.companyName != "" else {
-            print("Compañia existe vacio aunque no exista xd")
-            return true
+            throw Abort(.badRequest, reason: "El nombre de la compañia no puede estar vacio")
         }
-        let query = try await Company.query(on: db)
-            .filter(\.$companyName == companyDTO.companyName)
-            .limit(1)
-            .first()
-        if query != nil {
-            return true
-        } else {
-            return false
+        guard companyDTO.ruc != "" else {
+            throw Abort(.badRequest, reason: "El RUC de la compañia no puede estar vacio")
         }
     }
-    private func companyRucExist(companyDTO: CompanyDTO, db: any Database) async throws -> Bool {
-        guard companyDTO.ruc != "" else {
-            print("RUC vacio normal")
-            return false
-        }
-        let query = try await Company.query(on: db)
-            .filter(\.$ruc == companyDTO.ruc)
+    private func validateExist(dto: CompanyInputDTO, db: any Database) async throws -> Bool {
+        let companies = try await Company.query(on: db)
+            .group(.or) { or in
+                or.filter(\.$companyName == dto.companyName)
+                or.filter(\.$ruc == dto.ruc)
+            }
             .limit(1)
-            .first()
-        if query != nil {
-            return true
-        } else {
-            return false
-        }
+            .all()
+        return !companies.isEmpty
     }
 }

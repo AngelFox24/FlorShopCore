@@ -6,6 +6,7 @@ struct CreateImageUrl: AsyncMigration {
             .id()
             .field("imageUrl", .string, .required)
             .field("imageHash", .string, .required)
+            .field("syncToken", .int64, .required, .sql(.default(0)))
             .field("created_at", .datetime)
             .field("updated_at", .datetime)
             .create()

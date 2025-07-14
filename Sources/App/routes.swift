@@ -1,13 +1,13 @@
 import Fluent
 import Vapor
 
-func routes(_ app: Application) throws {
+func routes(_ app: Application) async throws {
     let webSocket = WebSocketClientManager()
-    let syncTimesStam = SyncTimestamp()
-    let syncManager = SyncManager(webSocketManager: webSocket, syncTimesStampManager: syncTimesStam)
+    let syncTokenManager = try await SyncTokenManager.makeSyncTokenManager(db: app.db)
+    let syncManager = SyncManager(webSocketManager: webSocket, syncTokenManager: syncTokenManager)
     let imageService = ImageUrlService()
-    try app.register(collection: VerifySyncController(syncManager: syncManager))
-    try app.register(collection: SessionController(syncManager: syncManager))
+    try app.register(collection: SyncController(syncManager: syncManager))
+    try app.register(collection: SessionController(syncManager: syncManager, imageUrlService: imageService))
     try app.register(collection: CompanyController(syncManager: syncManager))
     try app.register(collection: ImageUrlController(syncManager: syncManager, imageUrlService: imageService))
     try app.register(collection: SubsidiaryController(syncManager: syncManager, imageUrlService: imageService))

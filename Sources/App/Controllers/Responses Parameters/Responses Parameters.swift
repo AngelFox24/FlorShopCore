@@ -13,34 +13,33 @@ struct PayCustomerDebtResponse: Content {
     let change: Int
 }
 //MARK: Sync Response Parameters
-struct SyncCompanyResponse: Content {
-    let companyDTO: CompanyDTO?
-    let syncIds: VerifySyncParameters
+struct SyncCompanyResponse: Encodable {
+    let companyDTO: CompanyOutputDTO?
 }
-struct SyncCustomersResponse: Content {
-    let customersDTOs: [CustomerDTO]
-    let syncIds: VerifySyncParameters
-}
-struct SyncEmployeesResponse: Content {
-    let employeesDTOs: [EmployeeDTO]
-    let syncIds: VerifySyncParameters
-}
-struct SyncImageUrlResponse: Content {
-    let imagesUrlDTOs: [ImageURLDTO]
-    let syncIds: VerifySyncParameters
-}
-struct SyncProductsResponse: Content {
-    let productsDTOs: [ProductDTO]
-    let syncIds: VerifySyncParameters
-}
-struct SyncSalesResponse: Content {
-    let salesDTOs: [SaleDTO]
-    let syncIds: VerifySyncParameters
-}
-struct SyncSubsidiariesResponse: Content {
-    let subsidiariesDTOs: [SubsidiaryDTO]
-    let syncIds: VerifySyncParameters
-}
+//struct SyncCustomersResponse: Encodable {
+//    let customersDTOs: [CustomerOutputDTO]
+//    let syncIds: VerifySyncParameters
+//}
+//struct SyncEmployeesResponse: Encodable {
+//    let employeesDTOs: [EmployeeOutputDTO]
+//    let syncIds: VerifySyncParameters
+//}
+//struct SyncImageUrlResponse: Encodable {
+//    let imagesUrlDTOs: [ImageURLOutputDTO]
+//    let syncIds: VerifySyncParameters
+//}
+//struct SyncProductsResponse: Encodable {
+//    let productsDTOs: [ProductOutputDTO]
+//    let syncIds: VerifySyncParameters
+//}
+//struct SyncSalesResponse: Encodable {
+//    let salesDTOs: [SaleOutputDTO]
+//    let syncIds: VerifySyncParameters
+//}
+//struct SyncSubsidiariesResponse: Encodable {
+//    let subsidiariesDTOs: [SubsidiaryOutputDTO]
+//    let syncIds: VerifySyncParameters
+//}
 //MARK: SubResponse Parameters
 struct VerifySyncParameters: Content {
     let imageLastUpdate: UUID

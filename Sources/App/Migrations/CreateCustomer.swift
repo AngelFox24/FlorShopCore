@@ -18,6 +18,7 @@ struct CreateCustomer: AsyncMigration {
             .field("isCreditLimit", .bool, .required)
             .field("isDateLimitActive", .bool, .required)
             .field("isDateLimit", .bool, .required)
+            .field("syncToken", .int64, .required, .sql(.default(0)))
             .field("company_id", .uuid, .required, .references("companies", "id"))
             .field("imageUrl_id", .uuid, .references("imageUrls", "id"))
             .field("created_at", .datetime)

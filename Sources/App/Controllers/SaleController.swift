@@ -86,31 +86,7 @@ struct SaleController: RouteCollection {
     let syncManager: SyncManager
     func boot(routes: any RoutesBuilder) throws {
         let sales = routes.grouped("sales")
-        sales.post("sync", use: self.sync)
         sales.post(use: self.save)
-    }
-    @Sendable
-    func sync(req: Request) async throws -> SyncSalesResponse {
-        let request = try req.content.decode(SyncFromSubsidiaryParameters.self)
-        guard try await syncManager.shouldSync(clientSyncIds: request.syncIds, entity: .sale) else {
-            return SyncSalesResponse(
-                salesDTOs: [],
-                syncIds: request.syncIds
-            )
-        }
-        let maxPerPage: Int = 50
-        let query = Sale.query(on: req.db)
-            .filter(\.$updatedAt >= request.updatedSince)
-            .sort(\.$updatedAt, .ascending)
-            .with(\.$toSaleDetail) { saleDetail in
-                saleDetail.with(\.$imageUrl)
-            }
-            .limit(50)
-        let sales = try await query.all()
-        return await SyncSalesResponse(
-            salesDTOs: sales.mapToListSaleDTO(),
-            syncIds: sales.count == maxPerPage ? request.syncIds : syncManager.getUpdatedSyncTokens(entity: .sale, clientTokens: request.syncIds)
-        )
     }
     @Sendable
     func save(req: Request) async throws -> DefaultResponse {
@@ -131,13 +107,9 @@ struct SaleController: RouteCollection {
             throw Abort(.badRequest, reason: "El empleado no existe")
         }
         //Agregamos detalles a la venta
-        try await req.db.transaction { transaction in
-            var customerEntityPN: Customer?
-            if let customerId = saleTransactionDTO.customerId {//Si quiere registrar un cliente este debe existir sino no se puede registrar la venta
-                guard let customerEntity = try await Customer.find(customerId, on: transaction) else {
-                    throw Abort(.badRequest, reason: "El cliente no existe")
-                }
-                customerEntityPN = customerEntity
+        let responseString = try await req.db.transaction { transaction -> String in
+            guard let customer = try await Customer.find(saleTransactionDTO.customerId, on: transaction) else {
+                throw Abort(.badRequest, reason: "El cliente no existe")
             }
             let saleId = UUID()
             let saleNew = Sale(
@@ -145,8 +117,9 @@ struct SaleController: RouteCollection {
                 paymentType: paymentType.description,
                 saleDate: date,
                 total: saleTransactionDTO.cart.total,
+                syncToken: await syncManager.nextToken(),
                 subsidiaryID: subsidiaryId,
-                customerID: customerEntityPN?.id,
+                customerID: customer.id,
                 employeeID: employeeId
             )
             try await saleNew.save(on: transaction)
@@ -160,9 +133,10 @@ struct SaleController: RouteCollection {
                     barCode: product.barCode,
                     quantitySold: cartDetailDTO.quantity,
                     subtotal: cartDetailDTO.subtotal,
-                    unitType: product.unitType, //Enum
+                    unitType: product.unitType,
                     unitCost: product.unitCost,
                     unitPrice: product.unitPrice,
+                    syncToken: await syncManager.nextToken(),
                     saleID: saleId,
                     imageUrlID: product.imageUrl?.id
                 )
@@ -173,30 +147,26 @@ struct SaleController: RouteCollection {
                 print("Monto no coincide con el calculo de la BD, calculo real: \(totalOwn) calculo enviado: \(saleTransactionDTO.cart.total)")
                 throw Abort(.badRequest, reason: "Monto no coincide con el calculo de la BD, calculo real: \(totalOwn) calculo enviado: \(saleTransactionDTO.cart.total)")
             }
-            if let customerEntity = customerEntityPN {
-                customerEntity.lastDatePurchase = date
-                if customerEntity.totalDebt == 0 {
-                    var calendario = Calendar.current
-                    calendario.timeZone = TimeZone(identifier: "UTC")!
-                    customerEntity.dateLimit = calendario.date(byAdding: .day, value: customerEntity.creditDays, to: date)!
-                }
-                if paymentType == .loan {
-                    customerEntity.firstDatePurchaseWithCredit = customerEntity.totalDebt == 0 ? date : customerEntity.firstDatePurchaseWithCredit
-                    customerEntity.totalDebt = customerEntity.totalDebt + saleTransactionDTO.cart.total
-                    if customerEntity.totalDebt > customerEntity.creditLimit && customerEntity.isCreditLimitActive {
-                        customerEntity.isCreditLimit = true
-                    } else {
-                        customerEntity.isCreditLimit = false
-                    }
-                }
-                try await customerEntity.update(on: transaction)
+            customer.lastDatePurchase = date
+            if customer.totalDebt == 0 {
+                var calendario = Calendar.current
+                calendario.timeZone = TimeZone(identifier: "UTC")!
+                customer.dateLimit = calendario.date(byAdding: .day, value: customer.creditDays, to: date)!
             }
+            if paymentType == .loan {
+                customer.firstDatePurchaseWithCredit = customer.totalDebt == 0 ? date : customer.firstDatePurchaseWithCredit
+                customer.totalDebt = customer.totalDebt + saleTransactionDTO.cart.total
+                if customer.totalDebt > customer.creditLimit && customer.isCreditLimitActive {
+                    customer.isCreditLimit = true
+                } else {
+                    customer.isCreditLimit = false
+                }
+            }
+            try await customer.update(on: transaction)
+            return ("Venta Exitosa")
         }
-        await syncManager.updateLastSyncDate(to: [.product, .customer, .sale])
-        return DefaultResponse(
-            code: 200,
-            message: "Created"
-        )
+        await self.syncManager.sendSyncData()
+        return DefaultResponse(message: responseString)
     }
 //    private func correctAmount(saleTransactionDTO: SaleTransactionDTO, db: any Database) async throws -> Bool {
 //        let cartDTO = saleTransactionDTO.cart
@@ -204,7 +174,7 @@ struct SaleController: RouteCollection {
 //            
 //        }
 //    }
-    private func reduceStock(cartDetailDTO: CartDetailDTO, db: any Database) async throws -> Product {
+    private func reduceStock(cartDetailDTO: CartDetailInputDTO, db: any Database) async throws -> Product {
         let productEntity = try await Product.query(on: db)
             .filter(\.$id == cartDetailDTO.productId)
             .sort(\.$updatedAt, .ascending)

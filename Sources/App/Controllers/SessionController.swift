@@ -3,6 +3,7 @@ import Vapor
 
 struct SessionController: RouteCollection {
     let syncManager: SyncManager
+    let imageUrlService: ImageUrlService
     func boot(routes: any RoutesBuilder) throws {
         let session = routes.grouped("session")
         session.post("logIn", use: self.logIn)
@@ -39,47 +40,37 @@ struct SessionController: RouteCollection {
         guard try await Company.query(on: req.db).first() == nil else {
             throw Abort(.badRequest, reason: "No se puede registrar mas de una empresa")
         }
-        let companyId = UUID()
-        let subsidiaryId = UUID()
-        let employeeId = UUID()
-        try await req.db.transaction { transaction in
+        let sessionConfig = try await req.db.transaction { transaction -> SessionConfig in
+            let companyId = UUID()
+            let subsidiaryId = UUID()
+            let employeeId = UUID()
+            let subsidiaryImageId = try await imageUrlService.save(
+                db: transaction,
+                imageUrlInputDto: registerParameters.subsidiary.imageUrl,
+                syncToken: syncManager.nextToken()
+            )
+            let employeeImageId = try await imageUrlService.save(
+                db: transaction,
+                imageUrlInputDto: registerParameters.employee.imageUrl,
+                syncToken: syncManager.nextToken()
+            )
             //Registramos la compañia
             let newCompany = Company(
                 id: companyId,
                 companyName: registerParameters.company.companyName,
-                ruc: registerParameters.company.ruc
+                ruc: registerParameters.company.ruc,
+                syncToken: await syncManager.nextToken()
             )
             try await newCompany.save(on: transaction)
-            //Registramos la imagen de la subsidiaria
-            var subsidiaryImageId: UUID? = nil
-            if let subsidiaryImage = registerParameters.subsidiaryImage {
-                subsidiaryImageId = UUID()
-                let newSubsidiaryImage = ImageUrl(
-                    id: subsidiaryImageId,
-                    imageUrl: subsidiaryImage.imageUrl,
-                    imageHash: subsidiaryImage.imageHash
-                )
-                try await newSubsidiaryImage.save(on: transaction)
-            }
             //Registramos la subsidiaria
             let newSubsidiary = Subsidiary(
                 id: subsidiaryId,
                 name: registerParameters.subsidiary.name,
+                syncToken: await syncManager.nextToken(),
                 companyID: companyId,
                 imageUrlID: subsidiaryImageId
             )
             try await newSubsidiary.save(on: transaction)
-            //Registramos la imagen del empleado
-            var employeeImageId: UUID? = nil
-            if let employeeImage = registerParameters.employeeImage {
-                employeeImageId = UUID()
-                let newEmployeeImage = ImageUrl(
-                    id: employeeImageId,
-                    imageUrl: employeeImage.imageUrl,
-                    imageHash: employeeImage.imageHash
-                )
-                try await newEmployeeImage.save(on: transaction)
-            }
             //Registramos al empleado
             let newEmployee = Employee(
                 id: employeeId,
@@ -90,16 +81,18 @@ struct SessionController: RouteCollection {
                 phoneNumber: registerParameters.employee.phoneNumber,
                 role: registerParameters.employee.role,
                 active: registerParameters.employee.active,
+                syncToken: await syncManager.nextToken(),
                 subsidiaryID: subsidiaryId,
                 imageUrlID: employeeImageId
             )
             try await newEmployee.save(on: transaction)
+            return SessionConfig(
+                companyId: companyId,
+                subsidiaryId: subsidiaryId,
+                employeeId: employeeId
+            )
         }
-        await syncManager.updateLastSyncDate(to: [.company, .subsidiary, .image, .employee])
-        return SessionConfig(
-            companyId: companyId,
-            subsidiaryId: subsidiaryId,
-            employeeId: employeeId
-        )
+        await syncManager.sendSyncData()
+        return sessionConfig
     }
 }

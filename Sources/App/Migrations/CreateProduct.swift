@@ -12,6 +12,7 @@ struct CreateProduct: AsyncMigration {
             .field("unitType", .string, .required)
             .field("unitCost", .int, .required)
             .field("unitPrice", .int, .required)
+            .field("syncToken", .int64, .required, .sql(.default(0)))
             .field("subsidiary_id", .uuid, .required, .references("subsidiaries", "id"))
             .field("imageUrl_id", .uuid, .references("imageUrls", "id"))
             .field("created_at", .datetime)

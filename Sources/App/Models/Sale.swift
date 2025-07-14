@@ -9,7 +9,7 @@ import Fluent
 import Foundation
 import struct Foundation.UUID
 
-final class Sale: Model, @unchecked Sendable {
+final class Sale: Model, Syncronizable, @unchecked Sendable {
     static let schema = "sales"
     
     @ID(key: .id)
@@ -21,7 +21,10 @@ final class Sale: Model, @unchecked Sendable {
     var saleDate: Date
     @Field(key: "total")
     var total: Int
+    @Field(key: "syncToken")
+    var syncToken: Int64
     
+    //MARK: Timestamps
     @Timestamp(key: "created_at", on: .create)
     var createdAt: Date?
     @Timestamp(key: "updated_at", on: .update)
@@ -47,6 +50,7 @@ final class Sale: Model, @unchecked Sendable {
         paymentType: String,
         saleDate: Date,
         total: Int,
+        syncToken: Int64,
         subsidiaryID: Subsidiary.IDValue,
         customerID: Customer.IDValue?,
         employeeID: Employee.IDValue
@@ -55,6 +59,7 @@ final class Sale: Model, @unchecked Sendable {
         self.paymentType = paymentType
         self.saleDate = saleDate
         self.total = total
+        self.syncToken = syncToken
         self.$subsidiary.id = subsidiaryID
         self.$customer.id = customerID
         self.$employee.id = employeeID

@@ -1,14 +1,7 @@
-//
-//  File.swift
-//  
-//
-//  Created by Angel Curi Laurente on 12/07/2024.
-//
-
 import Foundation
 import Vapor
 
-struct CustomerDTO: Content {
+struct CustomerOutputDTO: Content {
     let id: UUID
     let name: String
     let lastName: String
@@ -24,8 +17,9 @@ struct CustomerDTO: Content {
     let lastDatePurchase: Date
     let phoneNumber: String
     let creditLimit: Int
+    let syncToken: Int64
     let companyID: UUID
-    let imageUrl: ImageURLDTO?
-    let createdAt: Date?
-    let updatedAt: Date?
+    let imageUrlId: UUID?
+    let createdAt: Date
+    let updatedAt: Date
 }

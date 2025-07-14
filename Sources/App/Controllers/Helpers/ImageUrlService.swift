@@ -7,69 +7,84 @@
 import Vapor
 import Fluent
 
-struct ImageUrlService {    
-    func save(req: Request, imageUrlDto: ImageURLDTO?) async throws -> UUID? {
-        guard let imageUrlDto = imageUrlDto else {
+enum TypeOfCreation {
+    case createByURL(url: String, hash: String)
+    case createByData(data: Data, hash: String)
+}
+
+struct ImageUrlService {
+    
+    ///Metodos para asignar una imagen
+    ///1: (Para imagenes que ya existen en BD)
+    ///- Se envia el Id
+    ///- Los demas campos pueden estar vacios
+    ///
+    ///Metodos para guardar una imagen
+    ///1: (Para imagenes de internet que solo tienen URL)
+    ///- No hay Id (se supone que es nuevo)
+    ///- Se envia la URL
+    ///- El Hash debe estar vacio
+    ///- El image data debe estar vacio
+    ///2: (Para imagenes locales que se suben al servidor)
+    ///- No hay Id (se supone que es nuevo)
+    ///- Se envia image data
+    ///- El Hash debe estar lleno
+    ///- La URL debe estar vacio
+    func save(db: any Database, imageUrlInputDto: ImageURLInputDTO?, syncToken: Int64) async throws -> UUID? {
+        guard let imageUrlDto = imageUrlInputDto else {
             return nil
         }
         //No se permite edicion de ImagenUrl, en todo caso crear uno nuevo
-        if let imageUrl = try await ImageUrl.find(imageUrlDto.id, on: req.db) {
+        if let imageId = imageUrlDto.id {
+            guard let imageUrl = try await ImageUrl.find(imageId, on: db) else {
+                throw Abort(.badRequest, reason: "La imagen con el ID proporcionado no existe")
+            }
             return imageUrl.id
-        } else if let imageData = imageUrlDto.imageData { //Si hay imageData entonces guardara imagen local
-            guard imageUrlDto.imageHash != "" else {
-                throw Abort(.badRequest, reason: "Se debe proporcionar el hash")
+        }
+        //In CREATION we try to find if image exist by Hash, URL
+        let typeOfCreation: TypeOfCreation = try self.getTypeOfCreation(dto: imageUrlDto)
+        
+        switch typeOfCreation {
+        case .createByURL(let url, let hash):
+            //Find by URL
+            print("Se creará una nueva imagen por URL")
+            if let imageUrl = try await getImageUrlByUrl(url: url, db: db) {
+                return imageUrl.id
             }
-            if let imageUrl = try await getImageUrlByHash(hash: imageUrlDto.imageHash, req: req) {
-                print("1: Se encontro por Hash")
+            //Create a new image by URL
+            let newImageUrlId = UUID()
+            let imageUrlNew = ImageUrl(
+                id: newImageUrlId,
+                imageUrl: url,
+                imageHash: hash,
+                syncToken: syncToken
+            )
+            try await imageUrlNew.save(on: db)
+            return imageUrlNew.id
+        case .createByData(let data, let hash):
+            //Find by Hash
+            print("Se creará una nueva imagen por Data")
+            if let imageUrl = try await getImageUrlByHash(hash: hash, db: db) {
                 return imageUrl.id
-            } else if imageUrlDto.imageUrl != "", let imageUrl = try await getImageUrlByUrl(url: imageUrlDto.imageUrl, req: req) {
-                print("1: Se encontro por Url")
-                return imageUrl.id
-            } else {
-                print("1: Se Creara que mrd")
-                //Create
-                let imageUrlNew = ImageUrl(
-                    id: imageUrlDto.id,
-                    imageUrl: getDomainUrl() + "imageUrls/" + imageUrlDto.id.uuidString,
-                    imageHash: imageUrlDto.imageHash
-                )
-                print("Id de la imagen creada: \(String(describing: imageUrlNew.id))")
-                //Crear nueva ImagenUrl
-                if !fileExists(id: imageUrlNew.id!) {
-                    print("Se guardara en local")
-                    //Save imageData in localStorage
-                    try createFile(id: imageUrlNew.id!, imageData: imageData)
-                    guard fileExists(id: imageUrlNew.id!) else {
-                        throw Abort(.badRequest, reason: "Se verifico que la imagen creada no existe")
-                    }
+            }
+            //Create a new image by URL
+            let newImageUrlId = UUID()
+            let imageUrlNew = ImageUrl(
+                id: newImageUrlId,
+                imageUrl: getDomainUrl() + "imageUrls/" + newImageUrlId.uuidString,
+                imageHash: hash,
+                syncToken: syncToken
+            )
+            //Crear nueva ImagenUrl
+            if !fileExists(id: newImageUrlId) {
+                //Save imageData in localStorage
+                try createFile(id: newImageUrlId, imageData: data)
+                guard fileExists(id: newImageUrlId) else {
+                    throw Abort(.badRequest, reason: "Se verifico que la imagen creada no existe")
                 }
-                try await imageUrlNew.save(on: req.db)
-//                await syncManager.updateLastSyncDate(to: [.image])
-                return imageUrlNew.id
             }
-        } else if imageUrlDto.imageUrl != "" { //Si no hay imageData debe tener URL
-            guard imageUrlDto.imageUrl != "" else {
-                throw Abort(.badRequest, reason: "Se debe proporcionar el la url")
-            }
-            if let imageUrl = try await ImageUrl.find(imageUrlDto.id, on: req.db) {//No actualizamos nada si busca por id
-                print("2: Se encontro por Id")
-                return imageUrl.id
-            } else if imageUrlDto.imageHash != "", let imageUrl = try await getImageUrlByHash(hash: imageUrlDto.imageHash, req: req) {
-                print("2: Se encontro por hash")
-                return imageUrl.id
-            } else if let imageUrl = try await getImageUrlByUrl(url: imageUrlDto.imageUrl, req: req) {
-                print("2: Se encontro por Url")
-                return imageUrl.id
-            } else {
-                print("2: Se creara")
-                //Create
-                let imageUrlNew = imageUrlDto.toImageUrl()
-                try await imageUrlNew.save(on: req.db)
-//                await syncManager.updateLastSyncDate(to: [.image])
-                return imageUrlNew.id
-            }
-        } else {
-            throw Abort(.badRequest, reason: "Se debe proporcionar el ImageData con hash o Url")
+            try await imageUrlNew.save(on: db)
+            return newImageUrlId
         }
     }
 
@@ -105,13 +120,41 @@ struct ImageUrlService {
         // Escribir los datos de la imagen en el archivo
         fileManager.createFile(atPath: getPathById(id: id), contents: imageData, attributes: nil)
     }
-    private func getImageUrlByHash(hash: String, req: Request) async throws -> ImageUrl? {
-        return try await ImageUrl.query(on: req.db)
+    ///Metodos para guardar una imagen
+    ///1: (Para imagenes de internet que solo tienen URL)
+    ///- No hay Id (se supone que es nuevo)
+    ///- Se envia la URL
+    ///- Se envia el Hash
+    ///- El image data debe estar vacio
+    ///2: (Para imagenes locales que se suben al servidor)
+    ///- No hay Id (se supone que es nuevo)
+    ///- Se envia image data
+    ///- Se envia el Hash
+    ///- La URL debe estar vacio
+    private func getTypeOfCreation(dto: ImageURLInputDTO) throws -> TypeOfCreation {
+        if dto.id == nil,
+           let imageURL = dto.imageUrl,
+           let imageHash = dto.imageHash,
+           imageHash != "",
+           dto.imageData == nil {
+            return .createByURL(url: imageURL, hash: imageHash)
+        }
+        if dto.id == nil,
+           let imageData = dto.imageData,
+           let imageHash = dto.imageHash,
+           imageHash != "",
+           dto.imageUrl == nil {
+            return .createByData(data: imageData, hash: imageHash)
+        }
+        throw Abort(.badRequest, reason: "Deben enviarse datos de la imagen o la URL de la imagen")
+    }
+    private func getImageUrlByHash(hash: String, db: any Database) async throws -> ImageUrl? {
+        return try await ImageUrl.query(on: db)
             .filter(\.$imageHash == hash)
             .first()
     }
-    private func getImageUrlByUrl(url: String, req: Request) async throws -> ImageUrl? {
-        return try await ImageUrl.query(on: req.db)
+    private func getImageUrlByUrl(url: String, db: any Database) async throws -> ImageUrl? {
+        return try await ImageUrl.query(on: db)
             .filter(\.$imageUrl == url)
             .first()
     }

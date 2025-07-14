@@ -6,28 +6,8 @@ struct ImageUrlController: RouteCollection {
     let imageUrlService: ImageUrlService
     func boot(routes: any RoutesBuilder) throws {
         let imageUrl = routes.grouped("imageUrls")
-        imageUrl.post("sync", use: self.sync)
+//        imageUrl.post("sync", use: self.sync)
         imageUrl.get(":imageId", use: self.serveImage)
-    }
-    @Sendable
-    func sync(req: Request) async throws -> SyncImageUrlResponse {
-        let request = try req.content.decode(SyncImageParameters.self)
-        guard try await syncManager.shouldSync(clientSyncIds: request.syncIds, entity: .image) else {
-            return SyncImageUrlResponse(
-                imagesUrlDTOs: [],
-                syncIds: request.syncIds
-            )
-        }
-        let maxPerPage: Int = 50
-        let query = ImageUrl.query(on: req.db)
-            .filter(\.$updatedAt >= request.updatedSince)
-            .sort(\.$updatedAt, .ascending)
-            .limit(maxPerPage)
-        let images = try await query.all()
-        return await SyncImageUrlResponse(
-            imagesUrlDTOs: images.mapToListImageURLDTO(),
-            syncIds: images.count == maxPerPage ? request.syncIds : syncManager.getUpdatedSyncTokens(entity: .image, clientTokens: request.syncIds)
-        )
     }
     @Sendable
     func serveImage(req: Request) async throws -> Response {

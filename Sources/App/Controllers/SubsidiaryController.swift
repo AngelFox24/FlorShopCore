@@ -6,83 +6,74 @@ struct SubsidiaryController: RouteCollection {
     let imageUrlService: ImageUrlService
     func boot(routes: any RoutesBuilder) throws {
         let subsidiaries = routes.grouped("subsidiaries")
-        subsidiaries.post("sync", use: self.sync)
         subsidiaries.post(use: self.save)
     }
     @Sendable
-    func sync(req: Request) async throws -> SyncSubsidiariesResponse {
-        let request = try req.content.decode(SyncFromCompanyParameters.self)
-        guard try await syncManager.shouldSync(clientSyncIds: request.syncIds, entity: .subsidiary) else {
-            return SyncSubsidiariesResponse(
-                subsidiariesDTOs: [],
-                syncIds: request.syncIds
-            )
-        }
-        let maxPerPage = 50
-        let query = Subsidiary.query(on: req.db)
-            .filter(\.$company.$id == request.companyId)
-            .filter(\.$updatedAt >= request.updatedSince)
-            .sort(\.$updatedAt, .ascending)
-            .with(\.$imageUrl)
-            .limit(maxPerPage)
-        let subsidiaries = try await query.all()
-        return await SyncSubsidiariesResponse(
-            subsidiariesDTOs: subsidiaries.mapToListSubsidiaryDTO(),
-            syncIds: subsidiaries.count == maxPerPage ? request.syncIds : syncManager.getUpdatedSyncTokens(entity: .subsidiary, clientTokens: request.syncIds)
-        )
-    }
-    @Sendable
     func save(req: Request) async throws -> DefaultResponse {
-        let subsidiaryDTO = try req.content.decode(SubsidiaryDTO.self)
+        let subsidiaryDTO = try req.content.decode(SubsidiaryInputDTO.self).clean()
+        try self.validateInput(dto: subsidiaryDTO)
         //Las imagenes se guardan por separado
-        if let subsidiary = try await Subsidiary.find(subsidiaryDTO.id, on: req.db) {
-            //Update
-            var update = false
-            if subsidiary.name != subsidiaryDTO.name {
-                guard try await !subsidiaryNameExist(subsidiaryDTO: subsidiaryDTO, db: req.db) else {
+        let responseString: String = try await req.db.transaction { transaction -> String in
+            let imageId = try await imageUrlService.save(
+                db: transaction,
+                imageUrlInputDto: subsidiaryDTO.imageUrl,
+                syncToken: syncManager.nextToken()
+            )
+            if let subsidiaryId = subsidiaryDTO.id {//UPDATE
+                guard let subsidiary = try await Subsidiary.find(subsidiaryId, on: transaction) else {
+                    throw Abort(.badRequest, reason: "La subsidiaria no existe para actualizar")
+                }
+                guard !subsidiaryDTO.isEqual(to: subsidiary) else {
+                    throw Abort(.badRequest, reason: "Not Updated, is equal")
+                }
+                //Update
+                guard try await !subsidiaryNameExist(subsidiaryDTO: subsidiaryDTO, db: transaction) else {
                     throw Abort(.badRequest, reason: "La subsidiaria con este nombre ya existe")
                 }
                 subsidiary.name = subsidiaryDTO.name
-                update = true
-            }
-            let imageId = try await self.imageUrlService.save(req: req, imageUrlDto: subsidiaryDTO.imageUrl)
-            if subsidiary.$imageUrl.id != imageId {
                 subsidiary.$imageUrl.id = imageId
-                update = true
+                try await subsidiary.update(on: transaction)
+                return ("Updated")
+            } else {//CREATE
+                guard try await !subsidiaryNameExist(subsidiaryDTO: subsidiaryDTO, db: transaction) else {
+                    throw Abort(.badRequest, reason: "La subsidiaria con este nombre ya existe")
+                }
+                guard let companyId = try await Company.find(subsidiaryDTO.companyID, on: transaction)?.id else {
+                    throw Abort(.badRequest, reason: "La compañia no existe existe")
+                }
+                let subsidiaryNew = Subsidiary(
+                    id: UUID(),
+                    name: subsidiaryDTO.name,
+                    syncToken: await syncManager.nextToken(),
+                    companyID: companyId,
+                    imageUrlID: imageId
+                )
+                try await subsidiaryNew.save(on: transaction)
+                return ("Created")
             }
-            if update {
-                try await subsidiary.update(on: req.db)
-                await syncManager.updateLastSyncDate(to: [.subsidiary])
-                return DefaultResponse(message: "Updated")
-            } else {
-                return DefaultResponse(message: "Not Updated")
-            }
-        } else {
-            //Create
-            guard try await !subsidiaryNameExist(subsidiaryDTO: subsidiaryDTO, db: req.db) else {
-                throw Abort(.badRequest, reason: "La subsidiaria con este nombre ya existe")
-            }
-            guard let companyId = try await Company.find(subsidiaryDTO.companyID, on: req.db)?.id else {
-                throw Abort(.badRequest, reason: "La compañia no existe existe")
-            }
-            let subsidiaryNew = Subsidiary(
-                id: UUID(),
-                name: subsidiaryDTO.name,
-                companyID: companyId,
-                imageUrlID: try await self.imageUrlService.save(req: req, imageUrlDto: subsidiaryDTO.imageUrl)
-            )
-            try await subsidiaryNew.save(on: req.db)
-            await syncManager.updateLastSyncDate(to: [.subsidiary])
-            return DefaultResponse(message: "Created")
+        }
+        await syncManager.sendSyncData() //Se envia un mensaje a todos para que soncronizen.
+        return DefaultResponse(message: responseString)
+    }
+    private func validateInput(dto: SubsidiaryInputDTO) throws {
+        guard dto.name != "" else {
+            throw Abort(.badRequest, reason: "El nombre de la subsidiaria no puede estar vacio")
         }
     }
-    private func subsidiaryNameExist(subsidiaryDTO: SubsidiaryDTO, db: any Database) async throws -> Bool {
-        guard subsidiaryDTO.name != "" else {
-            print("Subsidiaria existe vacio aunque no exista xd")
-            return true
-        }
+    private func getSubsidiary(dto: SubsidiaryInputDTO, db: any Database) async throws -> Subsidiary? {
+        return try await Subsidiary.query(on: db)
+            .filter(\.$name == dto.name)
+            .limit(1)
+            .first()
+    }
+    private func subsidiaryNameExist(subsidiaryDTO: SubsidiaryInputDTO, db: any Database) async throws -> Bool {
         let query = try await Subsidiary.query(on: db)
-            .filter(\.$name == subsidiaryDTO.name)
+            .group(.and) { and in
+                and.filter(\.$name == subsidiaryDTO.name)
+                if let subsidiaryId = subsidiaryDTO.id {
+                    and.filter(\.$id != subsidiaryId)
+                }
+            }
             .limit(1)
             .first()
         if query != nil {
