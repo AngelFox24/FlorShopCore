@@ -18,14 +18,14 @@ struct SyncController: RouteCollection {
             return SyncOutputParameters.empty()
         }
         let syncOutputParameters: SyncOutputParameters = try await req.db.transaction { transaction in
-            async let images = self.getChangedImages(since: request.syncToken, db: transaction)
-            async let company = self.getChangedCompany(since: request.syncToken, db: transaction)
-            async let subsidiaries = self.getChangedSubsidiaries(since: request.syncToken, db: transaction)
-            async let employees = self.getChangedEmployees(since: request.syncToken, db: transaction)
-            async let customers = self.getChangedCustomers(since: request.syncToken, db: transaction)
-            async let products = self.getChangedProducts(since: request.syncToken, db: transaction)
-            async let sales = self.getChangedSales(since: request.syncToken, db: transaction)
-            async let salesDetail = self.getChangedSalesDetail(since: request.syncToken, db: transaction)
+            async let images = self.getChangedImages(since: request.syncToken, sessionConfig: request.sessionConfig, db: transaction)
+            async let company = self.getChangedCompany(since: request.syncToken, sessionConfig: request.sessionConfig, db: transaction)
+            async let subsidiaries = self.getChangedSubsidiaries(since: request.syncToken, sessionConfig: request.sessionConfig, db: transaction)
+            async let employees = self.getChangedEmployees(since: request.syncToken, sessionConfig: request.sessionConfig, db: transaction)
+            async let customers = self.getChangedCustomers(since: request.syncToken, sessionConfig: request.sessionConfig, db: transaction)
+            async let products = self.getChangedProducts(since: request.syncToken, sessionConfig: request.sessionConfig, db: transaction)
+            async let sales = self.getChangedSales(since: request.syncToken, sessionConfig: request.sessionConfig, db: transaction)
+            async let salesDetail = self.getChangedSalesDetail(since: request.syncToken, sessionConfig: request.sessionConfig, db: transaction)
 
             // Esperar todos en paralelo
             return SyncOutputParameters(
@@ -55,14 +55,15 @@ struct SyncController: RouteCollection {
             }
         }
     }
-    func getChangedImages(since: Int64, db: any Database) async throws -> [ImageUrl] {
+    //TODO: Filter for subsidiary's scope from sessionConfig
+    private func getChangedImages(since: Int64, sessionConfig: SessionConfig, db: any Database) async throws -> [ImageUrl] {
         try await ImageUrl.query(on: db)
             .filter(\.$syncToken > since)
             .filter(\.$syncToken <= since + Int64(syncLimit))
             .limit(syncLimit)
             .all()
     }
-    func getChangedCompany(since: Int64, db: any Database) async throws -> Company? {
+    private func getChangedCompany(since: Int64, sessionConfig: SessionConfig, db: any Database) async throws -> Company? {
         guard let company = try await Company.query(on: db)
             .filter(\.$syncToken > since)
             .filter(\.$syncToken <= since + Int64(syncLimit))
@@ -74,42 +75,42 @@ struct SyncController: RouteCollection {
         }
         return company
     }
-    func getChangedSubsidiaries(since: Int64, db: any Database) async throws -> [Subsidiary] {
+    private func getChangedSubsidiaries(since: Int64, sessionConfig: SessionConfig, db: any Database) async throws -> [Subsidiary] {
         try await Subsidiary.query(on: db)
             .filter(\.$syncToken > since)
             .filter(\.$syncToken <= since + Int64(syncLimit))
             .limit(syncLimit)
             .all()
     }
-    func getChangedCustomers(since: Int64, db: any Database) async throws -> [Customer] {
+    private func getChangedCustomers(since: Int64, sessionConfig: SessionConfig, db: any Database) async throws -> [Customer] {
         try await Customer.query(on: db)
             .filter(\.$syncToken > since)
             .filter(\.$syncToken <= since + Int64(syncLimit))
             .limit(syncLimit)
             .all()
     }
-    func getChangedEmployees(since: Int64, db: any Database) async throws -> [Employee] {
+    private func getChangedEmployees(since: Int64, sessionConfig: SessionConfig, db: any Database) async throws -> [Employee] {
         try await Employee.query(on: db)
             .filter(\.$syncToken > since)
             .filter(\.$syncToken <= since + Int64(syncLimit))
             .limit(syncLimit)
             .all()
     }
-    func getChangedProducts(since: Int64, db: any Database) async throws -> [Product] {
+    private func getChangedProducts(since: Int64, sessionConfig: SessionConfig, db: any Database) async throws -> [Product] {
         try await Product.query(on: db)
             .filter(\.$syncToken > since)
             .filter(\.$syncToken <= since + Int64(syncLimit))
             .limit(syncLimit)
             .all()
     }
-    func getChangedSales(since: Int64, db: any Database) async throws -> [Sale] {
+    private func getChangedSales(since: Int64, sessionConfig: SessionConfig, db: any Database) async throws -> [Sale] {
         try await Sale.query(on: db)
             .filter(\.$syncToken > since)
             .filter(\.$syncToken <= since + Int64(syncLimit))
             .limit(syncLimit)
             .all()
     }
-    func getChangedSalesDetail(since: Int64, db: any Database) async throws -> [SaleDetail] {
+    private func getChangedSalesDetail(since: Int64, sessionConfig: SessionConfig, db: any Database) async throws -> [SaleDetail] {
         try await SaleDetail.query(on: db)
             .filter(\.$syncToken > since)
             .filter(\.$syncToken <= since + Int64(syncLimit))

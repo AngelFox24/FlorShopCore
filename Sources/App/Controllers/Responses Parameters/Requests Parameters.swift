@@ -18,6 +18,7 @@ struct SessionConfig: Content {
 //MARK: Sync Parameters
 struct SyncInputParameters: Decodable {
     let syncToken: Int64
+    let sessionConfig: SessionConfig
 }
 struct SyncOutputParameters: Content {
     let images: [ImageURLClientDTO]

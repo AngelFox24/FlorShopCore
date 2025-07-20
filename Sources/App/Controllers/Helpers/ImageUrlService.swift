@@ -134,17 +134,15 @@ struct ImageUrlService {
     private func getTypeOfCreation(dto: ImageURLServerDTO) throws -> TypeOfCreation {
         if dto.id == nil,
            let imageURL = dto.imageUrl,
-           let imageHash = dto.imageHash,
-           imageHash != "",
+           dto.imageHash != "",
            dto.imageData == nil {
-            return .createByURL(url: imageURL, hash: imageHash)
+            return .createByURL(url: imageURL, hash: dto.imageHash)
         }
         if dto.id == nil,
            let imageData = dto.imageData,
-           let imageHash = dto.imageHash,
-           imageHash != "",
+           dto.imageHash != "",
            dto.imageUrl == nil {
-            return .createByData(data: imageData, hash: imageHash)
+            return .createByData(data: imageData, hash: dto.imageHash)
         }
         throw Abort(.badRequest, reason: "Deben enviarse datos de la imagen o la URL de la imagen")
     }
