@@ -1,4 +1,5 @@
 import Fluent
+import FlorShop_DTOs
 import Vapor
 
 struct CompanyController: RouteCollection {
@@ -10,7 +11,7 @@ struct CompanyController: RouteCollection {
     }
     @Sendable
     func save(req: Request) async throws -> DefaultResponse {
-        let companyDTO = try req.content.decode(CompanyInputDTO.self).clean()
+        let companyDTO = try req.content.decode(CompanyServerDTO.self).clean()
         try self.validateInput(companyDTO: companyDTO)
         let responseText: String
         
@@ -42,7 +43,7 @@ struct CompanyController: RouteCollection {
         await syncManager.sendSyncData() //Se envia un mensaje a todos para que soncronizen.
         return DefaultResponse(message: responseText)
     }
-    private func validateInput(companyDTO: CompanyInputDTO) throws {
+    private func validateInput(companyDTO: CompanyServerDTO) throws {
         guard companyDTO.companyName != "" else {
             throw Abort(.badRequest, reason: "El nombre de la compañia no puede estar vacio")
         }
@@ -50,7 +51,7 @@ struct CompanyController: RouteCollection {
             throw Abort(.badRequest, reason: "El RUC de la compañia no puede estar vacio")
         }
     }
-    private func validateExist(dto: CompanyInputDTO, db: any Database) async throws -> Bool {
+    private func validateExist(dto: CompanyServerDTO, db: any Database) async throws -> Bool {
         let companies = try await Company.query(on: db)
             .group(.or) { or in
                 or.filter(\.$companyName == dto.companyName)

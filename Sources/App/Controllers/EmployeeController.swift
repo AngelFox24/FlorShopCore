@@ -1,4 +1,5 @@
 import Fluent
+import FlorShop_DTOs
 import Vapor
 
 struct EmployeeController: RouteCollection {
@@ -10,11 +11,11 @@ struct EmployeeController: RouteCollection {
     }
     @Sendable
     func save(req: Request) async throws -> DefaultResponse {
-        let employeeDTO = try req.content.decode(EmployeeInputDTO.self)
+        let employeeDTO = try req.content.decode(EmployeeServerDTO.self)
         let responseString: String = try await req.db.transaction { transaction -> String in
             let imageId = try await imageUrlService.save(
                 db: transaction,
-                imageUrlInputDto: employeeDTO.imageUrl,
+                imageUrlServerDto: employeeDTO.imageUrl,
                 syncToken: syncManager.nextToken()
             )
             if let employee = try await Employee.find(employeeDTO.id, on: transaction) {
@@ -71,7 +72,7 @@ struct EmployeeController: RouteCollection {
         await self.syncManager.sendSyncData()
         return DefaultResponse(message: responseString)
     }
-    private func employeeUserNameExist(employeeDTO: EmployeeInputDTO, db: any Database) async throws -> Bool {
+    private func employeeUserNameExist(employeeDTO: EmployeeServerDTO, db: any Database) async throws -> Bool {
         let userName = employeeDTO.user
         let query = try await Employee.query(on: db)
             .filter(\.$user == userName)
@@ -82,7 +83,7 @@ struct EmployeeController: RouteCollection {
             return false
         }
     }
-    private func employeeFullNameExist(employeeDTO: EmployeeInputDTO, db: any Database) async throws -> Bool {
+    private func employeeFullNameExist(employeeDTO: EmployeeServerDTO, db: any Database) async throws -> Bool {
         let name = employeeDTO.name
         let lastName = employeeDTO.lastName
         let query = try await Employee.query(on: db)

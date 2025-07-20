@@ -3,9 +3,9 @@
 //  FlorApiRest
 //
 //  Created by Angel Curi Laurente on 29/06/2025.
-//
 import Vapor
 import Fluent
+import FlorShop_DTOs
 
 enum TypeOfCreation {
     case createByURL(url: String, hash: String)
@@ -30,8 +30,8 @@ struct ImageUrlService {
     ///- Se envia image data
     ///- El Hash debe estar lleno
     ///- La URL debe estar vacio
-    func save(db: any Database, imageUrlInputDto: ImageURLInputDTO?, syncToken: Int64) async throws -> UUID? {
-        guard let imageUrlDto = imageUrlInputDto else {
+    func save(db: any Database, imageUrlServerDto: ImageURLServerDTO?, syncToken: Int64) async throws -> UUID? {
+        guard let imageUrlDto = imageUrlServerDto else {
             return nil
         }
         //No se permite edicion de ImagenUrl, en todo caso crear uno nuevo
@@ -131,7 +131,7 @@ struct ImageUrlService {
     ///- Se envia image data
     ///- Se envia el Hash
     ///- La URL debe estar vacio
-    private func getTypeOfCreation(dto: ImageURLInputDTO) throws -> TypeOfCreation {
+    private func getTypeOfCreation(dto: ImageURLServerDTO) throws -> TypeOfCreation {
         if dto.id == nil,
            let imageURL = dto.imageUrl,
            let imageHash = dto.imageHash,

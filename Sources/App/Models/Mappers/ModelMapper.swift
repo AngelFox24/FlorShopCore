@@ -1,8 +1,9 @@
 import Foundation
+import FlorShop_DTOs
 //MARK: Model to DTO
 extension Product {
-    func toProductDTO() -> ProductOutputDTO {
-        return ProductOutputDTO(
+    func toProductDTO() -> ProductClientDTO {
+        return ProductClientDTO(
             id: id!,
             productName: productName,
             barCode: barCode,
@@ -22,8 +23,8 @@ extension Product {
 }
 
 extension ImageUrl {
-    func toImageUrlDTO() -> ImageURLOutputDTO {
-        return ImageURLOutputDTO(
+    func toImageUrlDTO() -> ImageURLClientDTO {
+        return ImageURLClientDTO(
             id: id!,
             imageUrl: imageUrl,
             imageHash: imageHash,
@@ -35,8 +36,8 @@ extension ImageUrl {
 }
 
 extension Company {
-    func toCompanyDTO() -> CompanyOutputDTO {
-        return CompanyOutputDTO(
+    func toCompanyDTO() -> CompanyClientDTO {
+        return CompanyClientDTO(
             id: id!,
             companyName: companyName,
             ruc: ruc,
@@ -48,8 +49,8 @@ extension Company {
 }
 
 extension Customer {
-    func toCustomerDTO() -> CustomerOutputDTO {
-        return CustomerOutputDTO(
+    func toCustomerDTO() -> CustomerClientDTO {
+        return CustomerClientDTO(
             id: id!,
             name: name,
             lastName: lastName,
@@ -74,8 +75,8 @@ extension Customer {
 }
 
 extension Sale {
-    func toSaleDTO() -> SaleOutputDTO {
-        return SaleOutputDTO(
+    func toSaleDTO() -> SaleClientDTO {
+        return SaleClientDTO(
             id: id!,
             paymentType: paymentType,
             saleDate: saleDate,
@@ -92,8 +93,8 @@ extension Sale {
 }
 
 extension SaleDetail {
-    func toSaleDetailDTO() -> SaleDetailOutputDTO {
-        return SaleDetailOutputDTO(
+    func toSaleDetailDTO() -> SaleDetailClientDTO {
+        return SaleDetailClientDTO(
             id: id!,
             productName: productName,
             barCode: barCode,
@@ -112,8 +113,8 @@ extension SaleDetail {
 }
 
 extension Subsidiary {
-    func toSubsidiaryDTO() -> SubsidiaryOutputDTO {
-        return SubsidiaryOutputDTO(
+    func toSubsidiaryDTO() -> SubsidiaryClientDTO {
+        return SubsidiaryClientDTO(
             id: id!,
             name: name,
             syncToken: syncToken,
@@ -126,8 +127,8 @@ extension Subsidiary {
 }
 
 extension Employee {
-    func toEmployeeDTO() -> EmployeeOutputDTO {
-        return EmployeeOutputDTO(
+    func toEmployeeDTO() -> EmployeeClientDTO {
+        return EmployeeClientDTO(
             id: id!,
             user: user,
             name: name,
@@ -146,42 +147,42 @@ extension Employee {
 }
 //MARK: Array of Model
 extension Array where Element == Product {
-    func mapToListProductDTO() -> [ProductOutputDTO] {
+    func mapToListProductDTO() -> [ProductClientDTO] {
         return self.compactMap({$0.toProductDTO()})
     }
 }
 extension Array where Element == SaleDetail {
-    func mapToListSaleDetailDTO() -> [SaleDetailOutputDTO] {
+    func mapToListSaleDetailDTO() -> [SaleDetailClientDTO] {
         return self.compactMap({$0.toSaleDetailDTO()})
     }
 }
 extension Array where Element == Company {
-    func mapToListCompanyDTO() -> [CompanyOutputDTO] {
+    func mapToListCompanyDTO() -> [CompanyClientDTO] {
         return self.compactMap({$0.toCompanyDTO()})
     }
 }
 extension Array where Element == Customer {
-    func mapToListCustomerDTO() -> [CustomerOutputDTO] {
+    func mapToListCustomerDTO() -> [CustomerClientDTO] {
         return self.compactMap({$0.toCustomerDTO()})
     }
 }
 extension Array where Element == Employee {
-    func mapToListEmployeeDTO() -> [EmployeeOutputDTO] {
+    func mapToListEmployeeDTO() -> [EmployeeClientDTO] {
         return self.compactMap({$0.toEmployeeDTO()})
     }
 }
 extension Array where Element == ImageUrl {
-    func mapToListImageURLDTO() -> [ImageURLOutputDTO] {
+    func mapToListImageURLDTO() -> [ImageURLClientDTO] {
         return self.compactMap({$0.toImageUrlDTO()})
     }
 }
 extension Array where Element == Subsidiary {
-    func mapToListSubsidiaryDTO() -> [SubsidiaryOutputDTO] {
+    func mapToListSubsidiaryDTO() -> [SubsidiaryClientDTO] {
         return self.compactMap({$0.toSubsidiaryDTO()})
     }
 }
 extension Array where Element == Sale {
-    func mapToListSaleDTO() -> [SaleOutputDTO] {
+    func mapToListSaleDTO() -> [SaleClientDTO] {
         return self.compactMap({$0.toSaleDTO()})
     }
 }

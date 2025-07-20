@@ -1,4 +1,5 @@
 import Fluent
+import FlorShop_DTOs
 import Vapor
 
 struct ProductController: RouteCollection {
@@ -11,14 +12,14 @@ struct ProductController: RouteCollection {
     }
     @Sendable
     func save(req: Request) async throws -> DefaultResponse {
-        let productDTO = try req.content.decode(ProductInputDTO.self)
+        let productDTO = try req.content.decode(ProductServerDTO.self)
         guard productDTO.productName != "" else {
             throw Abort(.badRequest, reason: "El nombre del producto no puede ser vacio")
         }
         let responseString: String = try await req.db.transaction { transaction -> String in
             let imageId = try await imageUrlService.save(
                 db: transaction,
-                imageUrlInputDto: productDTO.imageUrl,
+                imageUrlServerDto: productDTO.imageUrl,
                 syncToken: syncManager.nextToken()
             )
             if let product = try await Product.find(productDTO.id, on: transaction) {
@@ -77,7 +78,7 @@ struct ProductController: RouteCollection {
         await self.syncManager.sendSyncData()
         return DefaultResponse(message: responseString)
     }
-    private func productNameExist(productDTO: ProductInputDTO, db: any Database) async throws -> Bool {
+    private func productNameExist(productDTO: ProductServerDTO, db: any Database) async throws -> Bool {
         guard productDTO.productName != "" else {
             print("Producto existe vacio aunque no exista xd")
             return true
@@ -92,7 +93,7 @@ struct ProductController: RouteCollection {
             return false
         }
     }
-    private func productBarCodeExist(productDTO: ProductInputDTO, db: any Database) async throws -> Bool {
+    private func productBarCodeExist(productDTO: ProductServerDTO, db: any Database) async throws -> Bool {
         guard productDTO.barCode != "" else {
             print("Producto barcode vacio aunque no exista xd")
             return false
@@ -110,7 +111,7 @@ struct ProductController: RouteCollection {
 //    @Sendable
 //    func bulkCreate(req: Request) async throws -> DefaultResponse {
 //        //No controla elementos repetidos osea Update
-//        let productsDTO = try req.content.decode([ProductInputDTO].self)
+//        let productsDTO = try req.content.decode([ProductServerDTO].self)
 //
 //        // Iniciar la transacción
 //        return try await req.db.transaction { transaction in

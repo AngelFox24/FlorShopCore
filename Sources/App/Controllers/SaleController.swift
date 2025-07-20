@@ -1,4 +1,5 @@
 import Fluent
+import FlorShop_DTOs
 import Vapor
 
 enum PaymentType: CustomStringConvertible, Equatable {
@@ -174,7 +175,7 @@ struct SaleController: RouteCollection {
 //            
 //        }
 //    }
-    private func reduceStock(cartDetailDTO: CartDetailInputDTO, db: any Database) async throws -> Product {
+    private func reduceStock(cartDetailDTO: CartDetailServerDTO, db: any Database) async throws -> Product {
         let productEntity = try await Product.query(on: db)
             .filter(\.$id == cartDetailDTO.productId)
             .sort(\.$updatedAt, .ascending)

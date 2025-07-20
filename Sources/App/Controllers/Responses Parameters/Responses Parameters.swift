@@ -1,4 +1,5 @@
 import Vapor
+import FlorShop_DTOs
 //MARK: Response Parameters
 struct DefaultResponse: Content {
     let code: Int
@@ -14,7 +15,7 @@ struct PayCustomerDebtResponse: Content {
 }
 //MARK: Sync Response Parameters
 struct SyncCompanyResponse: Encodable {
-    let companyDTO: CompanyOutputDTO?
+    let companyDTO: CompanyClientDTO?
 }
 //struct SyncCustomersResponse: Encodable {
 //    let customersDTOs: [CustomerOutputDTO]

@@ -1,4 +1,5 @@
 import Fluent
+import FlorShop_DTOs
 import Vapor
 
 struct CustomerContoller: RouteCollection {
@@ -11,11 +12,11 @@ struct CustomerContoller: RouteCollection {
     }
     @Sendable
     func save(req: Request) async throws -> DefaultResponse {
-        let customerDTO = try req.content.decode(CustomerInputDTO.self)
+        let customerDTO = try req.content.decode(CustomerServerDTO.self)
         let responseString: String = try await req.db.transaction { transaction -> String in
             let imageId = try await imageUrlService.save(
                 db: transaction,
-                imageUrlInputDto: customerDTO.imageUrl,
+                imageUrlServerDto: customerDTO.imageUrl,
                 syncToken: syncManager.nextToken()
             )
             if let customer = try await Customer.find(customerDTO.id, on: transaction) {
@@ -123,7 +124,7 @@ struct CustomerContoller: RouteCollection {
             .sort(\.$createdAt, .ascending)
             .all()
     }
-    private func customerFullNameExist(customerDTO: CustomerInputDTO, db: any Database) async throws -> Bool {
+    private func customerFullNameExist(customerDTO: CustomerServerDTO, db: any Database) async throws -> Bool {
         let name = customerDTO.name
         let lastName = customerDTO.lastName
         let query = try await Customer.query(on: db)

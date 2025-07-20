@@ -7,7 +7,6 @@ struct SyncController: RouteCollection {
     func boot(routes: any RoutesBuilder) throws {
         let subsidiaries = routes.grouped("sync")
         subsidiaries.post(use: self.sync)
-        // Nuevo endpoint WebSocket sin afectar el anterior
         subsidiaries.webSocket("ws", onUpgrade: self.handleWebSocket)
     }
     @Sendable
@@ -31,7 +30,7 @@ struct SyncController: RouteCollection {
             // Esperar todos en paralelo
             return SyncOutputParameters(
                 images: try await images.mapToListImageURLDTO(),
-                company: try await company?.toCompanyDTO(),
+                company: try await company?.toCompanyDTO(),//Company puede ser nulo, casi siempre no se actualiza
                 subsidiaries: try await subsidiaries.mapToListSubsidiaryDTO(),
                 employees: try await employees.mapToListEmployeeDTO(),
                 customers: try await customers.mapToListCustomerDTO(),

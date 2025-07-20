@@ -1,4 +1,5 @@
 import Fluent
+import FlorShop_DTOs
 import Vapor
 
 struct SubsidiaryController: RouteCollection {
@@ -10,13 +11,13 @@ struct SubsidiaryController: RouteCollection {
     }
     @Sendable
     func save(req: Request) async throws -> DefaultResponse {
-        let subsidiaryDTO = try req.content.decode(SubsidiaryInputDTO.self).clean()
+        let subsidiaryDTO = try req.content.decode(SubsidiaryServerDTO.self).clean()
         try self.validateInput(dto: subsidiaryDTO)
         //Las imagenes se guardan por separado
         let responseString: String = try await req.db.transaction { transaction -> String in
             let imageId = try await imageUrlService.save(
                 db: transaction,
-                imageUrlInputDto: subsidiaryDTO.imageUrl,
+                imageUrlServerDto: subsidiaryDTO.imageUrl,
                 syncToken: syncManager.nextToken()
             )
             if let subsidiaryId = subsidiaryDTO.id {//UPDATE
@@ -55,18 +56,18 @@ struct SubsidiaryController: RouteCollection {
         await syncManager.sendSyncData() //Se envia un mensaje a todos para que soncronizen.
         return DefaultResponse(message: responseString)
     }
-    private func validateInput(dto: SubsidiaryInputDTO) throws {
+    private func validateInput(dto: SubsidiaryServerDTO) throws {
         guard dto.name != "" else {
             throw Abort(.badRequest, reason: "El nombre de la subsidiaria no puede estar vacio")
         }
     }
-    private func getSubsidiary(dto: SubsidiaryInputDTO, db: any Database) async throws -> Subsidiary? {
+    private func getSubsidiary(dto: SubsidiaryServerDTO, db: any Database) async throws -> Subsidiary? {
         return try await Subsidiary.query(on: db)
             .filter(\.$name == dto.name)
             .limit(1)
             .first()
     }
-    private func subsidiaryNameExist(subsidiaryDTO: SubsidiaryInputDTO, db: any Database) async throws -> Bool {
+    private func subsidiaryNameExist(subsidiaryDTO: SubsidiaryServerDTO, db: any Database) async throws -> Bool {
         let query = try await Subsidiary.query(on: db)
             .group(.and) { and in
                 and.filter(\.$name == subsidiaryDTO.name)

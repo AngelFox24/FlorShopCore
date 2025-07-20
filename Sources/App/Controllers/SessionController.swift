@@ -46,12 +46,12 @@ struct SessionController: RouteCollection {
             let employeeId = UUID()
             let subsidiaryImageId = try await imageUrlService.save(
                 db: transaction,
-                imageUrlInputDto: registerParameters.subsidiary.imageUrl,
+                imageUrlServerDto: registerParameters.subsidiary.imageUrl,
                 syncToken: syncManager.nextToken()
             )
             let employeeImageId = try await imageUrlService.save(
                 db: transaction,
-                imageUrlInputDto: registerParameters.employee.imageUrl,
+                imageUrlServerDto: registerParameters.employee.imageUrl,
                 syncToken: syncManager.nextToken()
             )
             //Registramos la compañia

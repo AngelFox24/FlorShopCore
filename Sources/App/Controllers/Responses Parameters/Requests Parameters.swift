@@ -1,13 +1,14 @@
 import Vapor
+import FlorShop_DTOs
 //MARK: Session Parameters
 struct LogInParameters: Content {
     let username: String
     let password: String
 }
 struct RegisterParameters: Decodable {
-    let company: CompanyInputDTO
-    let subsidiary: SubsidiaryInputDTO
-    let employee: EmployeeInputDTO
+    let company: CompanyServerDTO
+    let subsidiary: SubsidiaryServerDTO
+    let employee: EmployeeServerDTO
 }
 struct SessionConfig: Content {
     let companyId: UUID
@@ -19,14 +20,14 @@ struct SyncInputParameters: Decodable {
     let syncToken: Int64
 }
 struct SyncOutputParameters: Content {
-    let images: [ImageURLOutputDTO]
-    let company: CompanyOutputDTO?
-    let subsidiaries: [SubsidiaryOutputDTO]
-    let employees: [EmployeeOutputDTO]
-    let customers: [CustomerOutputDTO]
-    let products: [ProductOutputDTO]
-    let sales: [SaleOutputDTO]
-    let salesDetail: [SaleDetailOutputDTO]
+    let images: [ImageURLClientDTO]
+    let company: CompanyClientDTO?
+    let subsidiaries: [SubsidiaryClientDTO]
+    let employees: [EmployeeClientDTO]
+    let customers: [CustomerClientDTO]
+    let products: [ProductClientDTO]
+    let sales: [SaleClientDTO]
+    let salesDetail: [SaleDetailClientDTO]
     let isUpToDate: Bool
     
     static func empty() -> Self {
@@ -72,5 +73,5 @@ struct RegisterSaleParameters: Decodable {
     let employeeId: UUID
     let customerId: UUID?
     let paymentType: String
-    let cart: CartInputDTO
+    let cart: CartServerDTO
 }
