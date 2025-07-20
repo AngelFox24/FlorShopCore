@@ -15,10 +15,10 @@ public func configure(_ app: Application) async throws {
     app.routes.defaultMaxBodySize = "10mb"
 
     //=========== FOR PRODUCCION ===========
-//    app.databases.use(try DBConfig.production(), as: .psql)
+    app.databases.use(try DBConfig.production(), as: .psql)
     //=========== FOR PRODUCCION ===========
     //=========== FOR DEBUGGING ===========
-    app.databases.use(DBConfig.development(), as: .psql)
+//    app.databases.use(DBConfig.development(), as: .psql)
     //=========== FOR DEBUGGING ===========
     
     app.migrations.add(CreateCompany())
