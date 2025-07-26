@@ -82,24 +82,28 @@ struct SyncController: RouteCollection {
         try await Subsidiary.query(on: db)
             .filter(\.$syncToken > startToken)
             .filter(\.$syncToken <= endToken)
+            .with(\.$imageUrl)
             .all()
     }
     private func getChangedCustomers(startToken: Int64, endToken: Int64, sessionConfig: SessionConfig, db: any Database) async throws -> [Customer] {
         try await Customer.query(on: db)
             .filter(\.$syncToken > startToken)
             .filter(\.$syncToken <= endToken)
+            .with(\.$imageUrl)
             .all()
     }
     private func getChangedEmployees(startToken: Int64, endToken: Int64, sessionConfig: SessionConfig, db: any Database) async throws -> [Employee] {
         try await Employee.query(on: db)
             .filter(\.$syncToken > startToken)
             .filter(\.$syncToken <= endToken)
+            .with(\.$imageUrl)
             .all()
     }
     private func getChangedProducts(startToken: Int64, endToken: Int64, sessionConfig: SessionConfig, db: any Database) async throws -> [Product] {
         try await Product.query(on: db)
             .filter(\.$syncToken > startToken)
             .filter(\.$syncToken <= endToken)
+            .with(\.$imageUrl)
             .all()
     }
     private func getChangedSales(startToken: Int64, endToken: Int64, sessionConfig: SessionConfig, db: any Database) async throws -> [Sale] {
@@ -112,6 +116,7 @@ struct SyncController: RouteCollection {
         try await SaleDetail.query(on: db)
             .filter(\.$syncToken > startToken)
             .filter(\.$syncToken <= endToken)
+            .with(\.$imageUrl)
             .all()
     }
 }
