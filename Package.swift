@@ -2,7 +2,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "FlorApiRest",
+    name: "FlorShopCore",
     platforms: [
         .macOS(.v13)
     ],
@@ -19,7 +19,7 @@ let package = Package(
     ],
     targets: [
         .executableTarget(
-            name: "FlorApiRest",
+            name: "FlorShopCore",
             dependencies: [
                 .product(name: "Fluent", package: "fluent"),
                 .product(name: "FluentPostgresDriver", package: "fluent-postgres-driver"),
@@ -31,9 +31,9 @@ let package = Package(
             swiftSettings: swiftSettings
         ),
         .testTarget(
-            name: "FlorApiRestTest",
+            name: "FlorShopCoreTest",
             dependencies: [
-                .target(name: "FlorApiRest"),
+                .target(name: "FlorShopCore"),
                 .product(name: "VaporTesting", package: "vapor"),
                 
                 // Workaround for https://github.com/apple/swift-package-manager/issues/6940

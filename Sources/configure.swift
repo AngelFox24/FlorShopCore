@@ -3,24 +3,12 @@ import Fluent
 import FluentPostgresDriver
 import Vapor
 
-// configures your application
 public func configure(_ app: Application) async throws {
-    // uncomment to serve files from /Public folder
-    // app.middleware.use(FileMiddleware(publicDirectory: app.directory.publicDirectory))
-//    app.http.server.configuration.hostname = "localhost" //Server Ubuntu
-    app.http.server.configuration.hostname = "192.168.2.5" //Local Host for Debugging
-
-    app.http.server.configuration.port = 8080
-    
+    app.http.server.configuration.hostname = app.getHostname()
+    app.http.server.configuration.port = app.getPort()
     app.routes.defaultMaxBodySize = "10mb"
-
-    //=========== FOR PRODUCCION ===========
-//    app.databases.use(try DBConfig.production(), as: .psql)
-    //=========== FOR PRODUCCION ===========
-    //=========== FOR DEBUGGING ===========
-    app.databases.use(DBConfig.development(), as: .psql)
-    //=========== FOR DEBUGGING ===========
-    
+    try app.configLogger()
+    app.databases.use(try app.getFactory(), as: app.getDatabaseID())
     app.migrations.add(CreateCompany())
     app.migrations.add(CreateImageUrl())
     app.migrations.add(CreateSubsidiary())

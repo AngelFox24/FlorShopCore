@@ -6,8 +6,12 @@ struct CompanyController: RouteCollection {
     let syncManager: SyncManager
     func boot(routes: any RoutesBuilder) throws {
         let companies = routes.grouped("companies")
-//        companies.post("sync", use: self.sync)
+        companies.get(use: self.test)
         companies.post(use: self.save)
+    }
+    @Sendable
+    func test(req: Request) async throws -> Response {
+        return Response(status: .ok, body: "Ok")
     }
     @Sendable
     func save(req: Request) async throws -> DefaultResponse {
