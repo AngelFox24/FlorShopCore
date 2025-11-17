@@ -15,7 +15,11 @@ let package = Package(
         .package(url: "https://github.com/vapor/fluent-postgres-driver.git", from: "2.8.0"),
         // 🔵 Non-blocking, event-driven networking for Swift. Used for custom executors
         .package(url: "https://github.com/apple/swift-nio.git", from: "2.65.0"),
-        .package(url: "https://github.com/AngelFox24/florshop-dtos", from: "1.0.3"),
+        // 🔵 Para generar tokens
+        .package(url: "https://github.com/vapor/jwt.git", exact: "5.1.2"),
+        // 🔵 Shared DTOs
+//        .package(url: "https://github.com/AngelFox24/florshop-dtos", exact: "1.0.5")
+                .package(path: "../florshop-dtos")
     ],
     targets: [
         .executableTarget(
@@ -26,7 +30,8 @@ let package = Package(
                 .product(name: "Vapor", package: "vapor"),
                 .product(name: "NIOCore", package: "swift-nio"),
                 .product(name: "NIOPosix", package: "swift-nio"),
-                .product(name: "FlorShop_DTOs", package: "florshop-dtos"),
+                .product(name: "JWT", package: "jwt"),
+                .product(name: "FlorShopDTOs", package: "florshop-dtos"),
             ],
             swiftSettings: swiftSettings
         ),

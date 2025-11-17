@@ -1,59 +1,57 @@
 import Fluent
-import FlorShop_DTOs
+import FlorShopDTOs
 import Vapor
 
 struct SubsidiaryController: RouteCollection {
     let syncManager: SyncManager
-    let imageUrlService: ImageUrlService
+    let validator: FlorShopAuthValitator
     func boot(routes: any RoutesBuilder) throws {
         let subsidiaries = routes.grouped("subsidiaries")
         subsidiaries.post(use: self.save)
     }
     @Sendable
     func save(req: Request) async throws -> DefaultResponse {
+        guard let token = req.headers.bearerAuthorization?.token else {
+            throw Abort(.unauthorized, reason: "Manda el token mrda")
+        }
+        let payload = try await validator.verifyToken(token, client: req.client)
         let subsidiaryDTO = try req.content.decode(SubsidiaryServerDTO.self).clean()
         try self.validateInput(dto: subsidiaryDTO)
-        //Las imagenes se guardan por separado
+        let oldGlobalToken: Int64 = await self.syncManager.getLastGlobalToken()
+        let oldBranchToken: Int64 = await self.syncManager.getLastBranchToken(subsidiaryCic: payload.subsidiaryCic)
         let responseString: String = try await req.db.transaction { transaction -> String in
-            let imageId = try await imageUrlService.save(
-                db: transaction,
-                imageUrlServerDto: subsidiaryDTO.imageUrl,
-                syncToken: syncManager.nextToken()
-            )
-            if let subsidiaryId = subsidiaryDTO.id {//UPDATE
-                guard let subsidiary = try await Subsidiary.find(subsidiaryId, on: transaction) else {
-                    throw Abort(.badRequest, reason: "La subsidiaria no existe para actualizar")
-                }
+            if let subsidiary = try await Subsidiary.findSubsidiary(subsidiaryCic: subsidiaryDTO.subsidiaryCic, on: transaction) {
                 guard !subsidiaryDTO.isEqual(to: subsidiary) else {
                     throw Abort(.badRequest, reason: "Not Updated, is equal")
                 }
                 //Update
-                guard try await !subsidiaryNameExist(subsidiaryDTO: subsidiaryDTO, db: transaction) else {
+                guard try await !Subsidiary.nameExist(name: subsidiaryDTO.name, on: transaction) else {
                     throw Abort(.badRequest, reason: "La subsidiaria con este nombre ya existe")
                 }
                 subsidiary.name = subsidiaryDTO.name
-                subsidiary.$imageUrl.id = imageId
+                subsidiary.imageUrl = subsidiaryDTO.imageUrl
+                subsidiary.syncToken = await self.syncManager.nextGlobalToken()
                 try await subsidiary.update(on: transaction)
                 return ("Updated")
             } else {//CREATE
-                guard try await !subsidiaryNameExist(subsidiaryDTO: subsidiaryDTO, db: transaction) else {
+                guard try await !Subsidiary.nameExist(name: subsidiaryDTO.name, on: transaction) else {
                     throw Abort(.badRequest, reason: "La subsidiaria con este nombre ya existe")
                 }
-                guard let companyId = try await Company.find(subsidiaryDTO.companyID, on: transaction)?.id else {
+                guard let companyId = try await Company.findCompany(companyCic: payload.companyCic, on: transaction)?.id else {
                     throw Abort(.badRequest, reason: "La compañia no existe existe")
                 }
                 let subsidiaryNew = Subsidiary(
-                    id: UUID(),
+                    subsidiaryCic: UUID().uuidString,
                     name: subsidiaryDTO.name,
-                    syncToken: await syncManager.nextToken(),
-                    companyID: companyId,
-                    imageUrlID: imageId
+                    imageUrl: subsidiaryDTO.imageUrl,
+                    syncToken: await syncManager.nextGlobalToken(),
+                    companyID: companyId
                 )
                 try await subsidiaryNew.save(on: transaction)
                 return ("Created")
             }
         }
-        await syncManager.sendSyncData() //Se envia un mensaje a todos para que soncronizen.
+        await self.syncManager.sendSyncData(oldGlobalToken: oldGlobalToken, oldBranchToken: oldBranchToken, subsidiaryCic: payload.subsidiaryCic)
         return DefaultResponse(message: responseString)
     }
     private func validateInput(dto: SubsidiaryServerDTO) throws {
@@ -67,20 +65,20 @@ struct SubsidiaryController: RouteCollection {
             .limit(1)
             .first()
     }
-    private func subsidiaryNameExist(subsidiaryDTO: SubsidiaryServerDTO, db: any Database) async throws -> Bool {
-        let query = try await Subsidiary.query(on: db)
-            .group(.and) { and in
-                and.filter(\.$name == subsidiaryDTO.name)
-                if let subsidiaryId = subsidiaryDTO.id {
-                    and.filter(\.$id != subsidiaryId)
-                }
-            }
-            .limit(1)
-            .first()
-        if query != nil {
-            return true
-        } else {
-            return false
-        }
-    }
+//    private func subsidiaryNameExist(subsidiaryDTO: SubsidiaryServerDTO, db: any Database) async throws -> Bool {
+//        let query = try await Subsidiary.query(on: db)
+//            .group(.and) { and in
+//                and.filter(\.$name == subsidiaryDTO.name)
+//                if let subsidiaryId = subsidiaryDTO.id {
+//                    and.filter(\.$id != subsidiaryId)
+//                }
+//            }
+//            .limit(1)
+//            .first()
+//        if query != nil {
+//            return true
+//        } else {
+//            return false
+//        }
+//    }
 }

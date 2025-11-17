@@ -1,24 +1,25 @@
 import Fluent
-import FlorShop_DTOs
+import FlorShopDTOs
 import Vapor
 
 struct EmployeeController: RouteCollection {
     let syncManager: SyncManager
-    let imageUrlService: ImageUrlService
+    let validator: FlorShopAuthValitator
     func boot(routes: any RoutesBuilder) throws {
         let employees = routes.grouped("employees")
         employees.post(use: self.save)
     }
     @Sendable
     func save(req: Request) async throws -> DefaultResponse {
+        guard let token = req.headers.bearerAuthorization?.token else {
+            throw Abort(.unauthorized, reason: "Manda el token mrda")
+        }
+        let payload = try await validator.verifyToken(token, client: req.client)
         let employeeDTO = try req.content.decode(EmployeeServerDTO.self)
+        let oldGlobalToken: Int64 = await self.syncManager.getLastGlobalToken()
+        let oldBranchToken: Int64 = await self.syncManager.getLastBranchToken(subsidiaryCic: payload.subsidiaryCic)
         let responseString: String = try await req.db.transaction { transaction -> String in
-            let imageId = try await imageUrlService.save(
-                db: transaction,
-                imageUrlServerDto: employeeDTO.imageUrl,
-                syncToken: syncManager.nextToken()
-            )
-            if let employee = try await Employee.find(employeeDTO.id, on: transaction) {
+            if let employee = try await Employee.findEmployee(employeeCic: employeeDTO.employeeCic, on: transaction) {
                 //Update
                 if employee.user != employeeDTO.user {
                     guard try await !employeeUserNameExist(employeeDTO: employeeDTO, db: transaction) else {
@@ -37,13 +38,13 @@ struct EmployeeController: RouteCollection {
                 employee.phoneNumber = employeeDTO.phoneNumber
                 employee.role = employeeDTO.role
                 employee.active = employeeDTO.active
-                employee.syncToken = await syncManager.nextToken()
-                employee.$imageUrl.id = imageId
+                employee.imageUrl = employeeDTO.imageUrl
+                employee.syncToken = await syncManager.nextBranchToken(subsidiaryCic: payload.subsidiaryCic)
                 try await employee.update(on: transaction)
                 return ("Updated")
             } else {
                 //Create
-                guard let subsidiaryId = try await Subsidiary.find(employeeDTO.subsidiaryID, on: transaction)?.id else {
+                guard let subsidiaryId = try await Subsidiary.findSubsidiary(subsidiaryCic: payload.subsidiaryCic, on: transaction)?.id else {
                     throw Abort(.badRequest, reason: "La subsidiaria no existe")
                 }
                 guard try await !employeeUserNameExist(employeeDTO: employeeDTO, db: transaction) else {
@@ -53,7 +54,7 @@ struct EmployeeController: RouteCollection {
                     throw Abort(.badRequest, reason: "El nombre y apellido del empleado ya existe")
                 }
                 let employeeNew = Employee(
-                    id: UUID(),
+                    employeeCic: UUID().uuidString,
                     user: employeeDTO.user,
                     name: employeeDTO.name,
                     lastName: employeeDTO.lastName,
@@ -61,15 +62,15 @@ struct EmployeeController: RouteCollection {
                     phoneNumber: employeeDTO.phoneNumber,
                     role: employeeDTO.role,
                     active: employeeDTO.active,
-                    syncToken: await syncManager.nextToken(),
-                    subsidiaryID: subsidiaryId,
-                    imageUrlID: imageId
+                    imageUrl: employeeDTO.imageUrl,
+                    syncToken: await syncManager.nextBranchToken(subsidiaryCic: payload.subsidiaryCic),
+                    subsidiaryID: subsidiaryId
                 )
                 try await employeeNew.save(on: transaction)
                 return ("Created")
             }
         }
-        await self.syncManager.sendSyncData()
+        await self.syncManager.sendSyncData(oldGlobalToken: oldGlobalToken, oldBranchToken: oldBranchToken, subsidiaryCic: payload.subsidiaryCic)
         return DefaultResponse(message: responseString)
     }
     private func employeeUserNameExist(employeeDTO: EmployeeServerDTO, db: any Database) async throws -> Bool {

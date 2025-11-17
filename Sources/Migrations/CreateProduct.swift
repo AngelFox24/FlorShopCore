@@ -2,25 +2,22 @@ import Fluent
 
 struct CreateProduct: AsyncMigration {
     func prepare(on database: any Database) async throws {
-        try await database.schema("products")
+        try await database.schema(Product.schema)
             .id()
-            .field("productName", .string, .required)
+            .field("product_cic", .string, .required)
             .field("barCode", .string, .required)
-            .field("active", .bool, .required)
-            .field("expirationDate", .date)
-            .field("quantityStock", .int, .required)
+            .field("productName", .string, .required)
             .field("unitType", .string, .required)
-            .field("unitCost", .int, .required)
-            .field("unitPrice", .int, .required)
+            .field("imageUrl", .string)
             .field("syncToken", .int64, .required, .sql(.default(0)))
-            .field("subsidiary_id", .uuid, .required, .references("subsidiaries", "id"))
-            .field("imageUrl_id", .uuid, .references("imageUrls", "id"))
+            .field("company_id", .uuid, .required, .references(Company.schema, "id"))
             .field("created_at", .datetime)
             .field("updated_at", .datetime)
+            .unique(on: "product_cic")
             .create()
     }
 
     func revert(on database: any Database) async throws {
-        try await database.schema("products").delete()
+        try await database.schema(Product.schema).delete()
     }
 }

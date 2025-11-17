@@ -1,5 +1,5 @@
 import Vapor
-import FlorShop_DTOs
+import FlorShopDTOs
 //MARK: Session Parameters
 struct LogInParameters: Content {
     let username: String
@@ -17,35 +17,23 @@ struct SessionConfig: Content {
 }
 //MARK: Sync Parameters
 struct SyncServerParameters: Decodable {
-    let syncToken: Int64
-    let sessionConfig: SessionConfig
+    let globalSyncToken: Int64
+    let branchSyncToken: Int64
 }
+
 struct SyncClientParameters: Content {
-    let images: [ImageURLClientDTO]
     let company: CompanyClientDTO?
     let subsidiaries: [SubsidiaryClientDTO]
     let employees: [EmployeeClientDTO]
     let customers: [CustomerClientDTO]
     let products: [ProductClientDTO]
+    let productsSubsidiary: [ProductSubsidiaryClientDTO]
     let sales: [SaleClientDTO]
     let salesDetail: [SaleDetailClientDTO]
-    let lastToken: Int64
-    let isUpToDate: Bool
-    
-    static func empty(lastToken: Int64) -> Self {
-        return .init(
-            images: [],
-            company: nil,
-            subsidiaries: [],
-            employees: [],
-            customers: [],
-            products: [],
-            sales: [],
-            salesDetail: [],
-            lastToken: lastToken,
-            isUpToDate: true
-        )
-    }
+    let lastGlobalToken: Int64
+    let isGlobalUpToDate: Bool
+    let lastBranchToken: Int64
+    let isBranchUpToDate: Bool
 }
 
 struct SyncCompanyParameters: Content {

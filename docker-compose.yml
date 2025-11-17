@@ -21,7 +21,14 @@ volumes:
     driver: local
     driver_opts:
       type: none
-      device: "/mnt/Disk1WDSSD/FlorShopCore/pgdata"
+      device: "/mnt/ssd/FlorShopCore/pgdata"
+      o: bind
+  florshopcore_app_data:
+    name: "FlorShopCoreAppVolume"
+    driver: local
+    driver_opts:
+      type: none
+      device: "/mnt/ssd/FlorShopCore/images"
       o: bind
 
 services:
@@ -37,7 +44,7 @@ services:
     ports:
       - '8080:8080'
     volumes:
-      - /mnt/Disk1WDSSD/FlorShopCore/images:/app/images  # Montaje del volumen para imágenes en produccion
+      - florshopcore_app_data:/app/images  # Montaje del volumen para imágenes en produccion
     # user: '0' # uncomment to run as root for testing purposes even though Dockerfile defines 'vapor' user.
     command: ["serve", "--env", "production", "--hostname", "0.0.0.0", "--port", "8080"]
   migrate:

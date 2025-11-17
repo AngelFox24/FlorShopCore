@@ -1,52 +1,55 @@
-//
-//  Subsidiary.swift
-//
-//
-//  Created by Angel Curi Laurente on 7/12/23.
-//
-
 import Fluent
 import Foundation
 import struct Foundation.UUID
 
-final class Subsidiary: Model, Syncronizable, @unchecked Sendable {
-    
+final class Subsidiary: Model, @unchecked Sendable {
     static let schema = "subsidiaries"
     
-    @ID(key: .id)
-    var id: UUID?
+    @ID(key: .id) var id: UUID?
     
-    @Field(key: "name")
-    var name: String
-    @Field(key: "syncToken")
-    var syncToken: Int64
+    @Field(key: "subsidiary_cic") var subsidiaryCic: String
+    @Field(key: "name") var name: String
+    @Field(key: "imageUrl") var imageUrl: String?
+    @Field(key: "syncToken") var syncToken: Int64
     
     //MARK: Timestamps
-    @Timestamp(key: "created_at", on: .create)
-    var createdAt: Date?
-    @Timestamp(key: "updated_at", on: .update)
-    var updatedAt: Date?
+    @Timestamp(key: "created_at", on: .create) var createdAt: Date?
+    @Timestamp(key: "updated_at", on: .update) var updatedAt: Date?
     
     //MARK: Relationship
-    @Parent(key: "company_id")
-    var company: Company
-    
-    @OptionalParent(key: "imageUrl_id")
-    var imageUrl: ImageUrl?
+    @Parent(key: "company_id") var company: Company
     
     init() { }
     
     init(
-        id: UUID? = nil,
+        subsidiaryCic: String,
         name: String,
+        imageUrl: String?,
         syncToken: Int64,
-        companyID: Company.IDValue,
-        imageUrlID: ImageUrl.IDValue?
+        companyID: Company.IDValue
     ) {
-        self.id = id
+        self.subsidiaryCic = subsidiaryCic
         self.name = name
+        self.imageUrl = imageUrl
         self.syncToken = syncToken
         self.$company.id = companyID
-        self.$imageUrl.id = imageUrlID
+    }
+}
+
+extension Subsidiary {
+    static func findSubsidiary(subsidiaryCic: String?, on db: any Database) async throws -> Subsidiary? {
+        guard let subsidiaryCic else { return nil }
+        return try await Subsidiary.query(on: db)
+            .filter(Subsidiary.self, \.$subsidiaryCic == subsidiaryCic)
+            .first()
+    }
+    static func nameExist(name: String, on db: any Database) async throws -> Bool {
+        if let _ = try await Subsidiary.query(on: db)
+            .filter(Subsidiary.self, \.$name == name)
+            .first() {
+            return true
+        } else {
+            return false
+        }
     }
 }

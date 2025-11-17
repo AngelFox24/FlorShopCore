@@ -1,71 +1,47 @@
-//
-//  Employee.swift
-//
-//
-//  Created by Angel Curi Laurente on 7/12/23.
-//
-
 import Fluent
 import Foundation
-import struct Foundation.UUID
+import FlorShopDTOs
 
-final class Employee: Model, Syncronizable, @unchecked Sendable {
-    
+final class Employee: Model, @unchecked Sendable {
     static let schema = "employees"
     
-    @ID(key: .id)
-    var id: UUID?
+    @ID(key: .id) var id: UUID?
     
-    @Field(key: "user")
-    var user: String
-    @Field(key: "name")
-    var name: String
-    @Field(key: "lastName")
-    var lastName: String
-    @Field(key: "email")
-    var email: String
-    @Field(key: "phoneNumber")
-    var phoneNumber: String
-    @Field(key: "role")
-    var role: String
-    @Field(key: "active")
-    var active: Bool
-    @Field(key: "syncToken")
-    var syncToken: Int64
+    @Field(key: "employee_cic") var employeeCic: String
+    @Field(key: "user") var user: String
+    @Field(key: "name") var name: String
+    @Field(key: "lastName") var lastName: String
+    @Field(key: "email") var email: String
+    @Field(key: "phoneNumber") var phoneNumber: String
+    @Field(key: "role") var role: UserSubsidiaryRole
+    @Field(key: "active") var active: Bool
+    @Field(key: "imageUrl") var imageUrl: String?
+    @Field(key: "syncToken") var syncToken: Int64
     
     //MARK: Timestamps
-    @Timestamp(key: "created_at", on: .create)
-    var createdAt: Date?
-    @Timestamp(key: "updated_at", on: .update)
-    var updatedAt: Date?
+    @Timestamp(key: "created_at", on: .create) var createdAt: Date?
+    @Timestamp(key: "updated_at", on: .update) var updatedAt: Date?
     
     //MARK: Relationship
-    @Parent(key: "subsidiary_id")
-    var subsidiary: Subsidiary
-    
-    //Imagen se debe pedir en el JSON
-    @OptionalParent(key: "imageUrl_id")
-    var imageUrl: ImageUrl?
-    
-    @Children(for: \.$employee)
-    var toSale: [Sale]
+    @Parent(key: "subsidiary_id") var subsidiary: Subsidiary
+    @Children(for: \.$employee) var toSale: [Sale]
     
     init() { }
     
     init(
-        id: UUID? = nil,
+        employeeCic: String,
         user: String,
         name: String,
         lastName: String,
         email: String,
         phoneNumber: String,
-        role: String,
+        role: UserSubsidiaryRole,
         active: Bool,
+        imageUrl: String?,
         syncToken: Int64,
-        subsidiaryID: Subsidiary.IDValue,
-        imageUrlID: ImageUrl.IDValue?
+        subsidiaryID: Subsidiary.IDValue
     ) {
-        self.id = id
+        self.employeeCic = employeeCic
         self.user = user
         self.name = name
         self.lastName = lastName
@@ -73,8 +49,17 @@ final class Employee: Model, Syncronizable, @unchecked Sendable {
         self.phoneNumber = phoneNumber
         self.role = role
         self.active = active
+        self.imageUrl = imageUrl
         self.syncToken = syncToken
         self.$subsidiary.id = subsidiaryID
-        self.$imageUrl.id = imageUrlID
+    }
+}
+
+extension Employee {
+    static func findEmployee(employeeCic: String?, on db: any Database) async throws -> Employee? {
+        guard let employeeCic else { return nil }
+        return try await Employee.query(on: db)
+            .filter(Employee.self, \.$employeeCic == employeeCic)
+            .first()
     }
 }

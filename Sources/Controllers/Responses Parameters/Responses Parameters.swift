@@ -1,5 +1,5 @@
 import Vapor
-import FlorShop_DTOs
+import FlorShopDTOs
 //MARK: Response Parameters
 struct DefaultResponse: Content {
     let code: Int

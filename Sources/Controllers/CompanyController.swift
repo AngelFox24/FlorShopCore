@@ -1,9 +1,10 @@
 import Fluent
-import FlorShop_DTOs
+import FlorShopDTOs
 import Vapor
 
 struct CompanyController: RouteCollection {
     let syncManager: SyncManager
+    let validator: FlorShopAuthValitator
     func boot(routes: any RoutesBuilder) throws {
         let companies = routes.grouped("companies")
         companies.get(use: self.test)
@@ -15,54 +16,40 @@ struct CompanyController: RouteCollection {
     }
     @Sendable
     func save(req: Request) async throws -> DefaultResponse {
+        guard let token = req.headers.bearerAuthorization?.token else {
+            throw Abort(.unauthorized, reason: "Manda el token mrda")
+        }
+        let payload = try await validator.verifyToken(token, client: req.client)
         let companyDTO = try req.content.decode(CompanyServerDTO.self).clean()
-        try self.validateInput(companyDTO: companyDTO)
+        try companyDTO.validate()
         let responseText: String
         
-        if let companyId = companyDTO.id { //Update: If the client send Id is for update
-            guard let company = try await Company.find(companyId, on: req.db) else {
-                throw Abort(.badRequest, reason: "La compañia no existe para actualizar")
-            }
+        let oldGlobalToken: Int64 = await self.syncManager.getLastGlobalToken()
+        let oldBranchToken: Int64 = await self.syncManager.getLastBranchToken(subsidiaryCic: payload.subsidiaryCic)
+        if let company = try await Company.findCompany(companyCic: payload.companyCic, on: req.db) {
             guard !companyDTO.isEqual(to: company) else {
                 return DefaultResponse(message: "Not Updated, is equal")
             }
             company.companyName = companyDTO.companyName
             company.ruc = companyDTO.ruc
-            company.syncToken = await syncManager.nextToken()
+            company.syncToken = await syncManager.nextGlobalToken()
             try await company.update(on: req.db)
             responseText = "Updated"
-        } else { //Create: If client don't send Id is for Create a new item
-            guard try await !self.validateExist(dto: companyDTO, db: req.db) else {
-                throw Abort(.badRequest, reason: "El nombre o el RUC de la compañia ya existen")
-            }
-            let companyNew = Company(
-                id: UUID(),
-                companyName: companyDTO.companyName,
-                ruc: companyDTO.ruc,
-                syncToken: await syncManager.nextToken()
-            )
-            try await companyNew.save(on: req.db)
-            responseText = "Created"
+        } else {
+            responseText = "Only one company per server"
         }
-        await syncManager.sendSyncData() //Se envia un mensaje a todos para que soncronizen.
+        await self.syncManager.sendSyncData(oldGlobalToken: oldGlobalToken, oldBranchToken: oldBranchToken, subsidiaryCic: payload.subsidiaryCic)
         return DefaultResponse(message: responseText)
     }
-    private func validateInput(companyDTO: CompanyServerDTO) throws {
-        guard companyDTO.companyName != "" else {
+}
+
+extension CompanyServerDTO {
+    func validate() throws {
+        guard self.companyName != "" else {
             throw Abort(.badRequest, reason: "El nombre de la compañia no puede estar vacio")
         }
-        guard companyDTO.ruc != "" else {
+        guard self.ruc != "" else {
             throw Abort(.badRequest, reason: "El RUC de la compañia no puede estar vacio")
         }
-    }
-    private func validateExist(dto: CompanyServerDTO, db: any Database) async throws -> Bool {
-        let companies = try await Company.query(on: db)
-            .group(.or) { or in
-                or.filter(\.$companyName == dto.companyName)
-                or.filter(\.$ruc == dto.ruc)
-            }
-            .limit(1)
-            .all()
-        return !companies.isEmpty
     }
 }

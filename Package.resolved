@@ -1,5 +1,5 @@
 {
-  "originHash" : "4de337b617e12b984354c8eea7ed5bd957402f781c40ad0013c5fdd5ac6bc254",
+  "originHash" : "129f465f54f4f457a11510cc9b1359ece911adb783189e82149cadc37309cc3d",
   "pins" : [
     {
       "identity" : "async-http-client",
@@ -29,15 +29,6 @@
       }
     },
     {
-      "identity" : "florshop-dtos",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/AngelFox24/florshop-dtos",
-      "state" : {
-        "revision" : "634c7ead0724389f4f14b902a391810699b93e63",
-        "version" : "1.0.3"
-      }
-    },
-    {
       "identity" : "fluent",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/vapor/fluent.git",
@@ -62,6 +53,24 @@
       "state" : {
         "revision" : "095bc5a17ab3363167f4becb270b6f8eb790481c",
         "version" : "2.10.1"
+      }
+    },
+    {
+      "identity" : "jwt",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/vapor/jwt.git",
+      "state" : {
+        "revision" : "af1c59762d70d1065ddbc0d7902ea9b3dacd1a26",
+        "version" : "5.1.2"
+      }
+    },
+    {
+      "identity" : "jwt-kit",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/vapor/jwt-kit.git",
+      "state" : {
+        "revision" : "2033b3e661238dda3d30e36a2d40987499d987de",
+        "version" : "5.2.0"
       }
     },
     {

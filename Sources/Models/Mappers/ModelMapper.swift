@@ -1,34 +1,36 @@
 import Foundation
-import FlorShop_DTOs
+import FlorShopDTOs
+import Fluent
+
 //MARK: Model to DTO
 extension Product {
     func toProductDTO() -> ProductClientDTO {
         return ProductClientDTO(
-            id: id!,
+            productCic: productCic,
             productName: productName,
             barCode: barCode,
-            active: active,
-            expirationDate: expirationDate,
-            quantityStock: quantityStock,
             unitType: unitType,
-            unitCost: unitCost,
-            unitPrice: unitPrice,
             syncToken: syncToken,
-            subsidiaryId: self.$subsidiary.id,
-            imageUrlId: imageUrl?.id,
+            companyCic: company.companyCic,
+            imageUrl: imageUrl,
             createdAt: createdAt!,
             updatedAt: updatedAt!
         )
     }
 }
 
-extension ImageUrl {
-    func toImageUrlDTO() -> ImageURLClientDTO {
-        return ImageURLClientDTO(
+extension ProductSubsidiary {
+    func toProductSubsidiaryDTO() -> ProductSubsidiaryClientDTO {
+        return ProductSubsidiaryClientDTO(
             id: id!,
-            imageUrl: imageUrl,
-            imageHash: imageHash,
+            active: active,
+            expirationDate: expirationDate,
+            quantityStock: quantityStock,
+            unitCost: unitCost,
+            unitPrice: unitPrice,
             syncToken: syncToken,
+            subsidiaryCic: subsidiary.subsidiaryCic,
+            productCic: product.productCic,
             createdAt: createdAt!,
             updatedAt: updatedAt!
         )
@@ -38,7 +40,7 @@ extension ImageUrl {
 extension Company {
     func toCompanyDTO() -> CompanyClientDTO {
         return CompanyClientDTO(
-            id: id!,
+            companyCic: companyCic,
             companyName: companyName,
             ruc: ruc,
             syncToken: syncToken,
@@ -51,7 +53,7 @@ extension Company {
 extension Customer {
     func toCustomerDTO() -> CustomerClientDTO {
         return CustomerClientDTO(
-            id: id!,
+            customerCic: customerCic,
             name: name,
             lastName: lastName,
             totalDebt: totalDebt,
@@ -66,8 +68,8 @@ extension Customer {
             phoneNumber: phoneNumber,
             creditLimit: creditLimit,
             syncToken: syncToken,
-            companyID: self.$company.id,
-            imageUrlId: imageUrl?.id,
+            companyCic: company.companyCic,
+            imageUrl: imageUrl,
             createdAt: createdAt!,
             updatedAt: updatedAt!
         )
@@ -82,9 +84,9 @@ extension Sale {
             saleDate: saleDate,
             total: total,
             syncToken: syncToken,
-            subsidiaryId: self.$subsidiary.id,
-            customerId: self.$customer.id,
-            employeeId: self.$employee.id,
+            subsidiaryCic: self.subsidiary.subsidiaryCic,
+            customerCic: self.customer?.customerCic,
+            employeeCic: self.employee.employeeCic,
             saleDetail: self.toSaleDetail.mapToListSaleDetailDTO(),
             createdAt: createdAt!,
             updatedAt: updatedAt!
@@ -105,7 +107,7 @@ extension SaleDetail {
             unitPrice: unitPrice,
             syncToken: syncToken,
             saleID: self.$sale.id,
-            imageUrlId: imageUrl?.id,
+            imageUrl: imageUrl,
             createdAt: createdAt!,
             updatedAt: updatedAt!
         )
@@ -115,11 +117,11 @@ extension SaleDetail {
 extension Subsidiary {
     func toSubsidiaryDTO() -> SubsidiaryClientDTO {
         return SubsidiaryClientDTO(
-            id: id!,
+            subsidiaryCic: subsidiaryCic,
             name: name,
             syncToken: syncToken,
-            companyID: self.$company.id,
-            imageUrlId: imageUrl?.id,
+            companyCic: self.company.companyCic,
+            imageUrl: imageUrl,
             createdAt: createdAt!,
             updatedAt: updatedAt!
         )
@@ -129,7 +131,7 @@ extension Subsidiary {
 extension Employee {
     func toEmployeeDTO() -> EmployeeClientDTO {
         return EmployeeClientDTO(
-            id: id!,
+            employeeCic: employeeCic,
             user: user,
             name: name,
             lastName: lastName,
@@ -138,8 +140,8 @@ extension Employee {
             role: role,
             active: active,
             syncToken: syncToken,
-            subsidiaryID: self.$subsidiary.id,
-            imageUrlId: imageUrl?.id,
+            subsidiaryCic: self.subsidiary.subsidiaryCic,
+            imageUrl: imageUrl,
             createdAt: createdAt!,
             updatedAt: updatedAt!
         )
@@ -149,6 +151,11 @@ extension Employee {
 extension Array where Element == Product {
     func mapToListProductDTO() -> [ProductClientDTO] {
         return self.compactMap({$0.toProductDTO()})
+    }
+}
+extension Array where Element == ProductSubsidiary {
+    func mapToListProductSubsidiaryDTO() -> [ProductSubsidiaryClientDTO] {
+        return self.compactMap({$0.toProductSubsidiaryDTO()})
     }
 }
 extension Array where Element == SaleDetail {
@@ -169,11 +176,6 @@ extension Array where Element == Customer {
 extension Array where Element == Employee {
     func mapToListEmployeeDTO() -> [EmployeeClientDTO] {
         return self.compactMap({$0.toEmployeeDTO()})
-    }
-}
-extension Array where Element == ImageUrl {
-    func mapToListImageURLDTO() -> [ImageURLClientDTO] {
-        return self.compactMap({$0.toImageUrlDTO()})
     }
 }
 extension Array where Element == Subsidiary {

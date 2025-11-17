@@ -1,73 +1,44 @@
-//
-//  Customer.swift
-//
-//
-//  Created by Angel Curi Laurente on 7/12/23.
-//
-
 import Fluent
 import Foundation
 import struct Foundation.UUID
 
-final class Customer: Model, Syncronizable, @unchecked Sendable {
+final class Customer: Model, @unchecked Sendable {
     static let schema = "customers"
     
     @ID(key: .id)
     var id: UUID?
     
-    @Field(key: "name")
-    var name: String
-    @Field(key: "lastName")
-    var lastName: String
-    @Field(key: "totalDebt")
-    var totalDebt: Int
-    @Field(key: "creditScore")
-    var creditScore: Int
-    @Field(key: "creditDays")
-    var creditDays: Int
-    @Field(key: "isCreditLimitActive")
-    var isCreditLimitActive: Bool
-    @Field(key: "isCreditLimit")
-    var isCreditLimit: Bool
-    @Field(key: "isDateLimitActive")
-    var isDateLimitActive: Bool
-    @Field(key: "isDateLimit")
-    var isDateLimit: Bool
-    @Field(key: "dateLimit")
-    var dateLimit: Date
-    @Field(key: "firstDatePurchaseWithCredit")
-    var firstDatePurchaseWithCredit: Date?
-    @Field(key: "lastDatePurchase")
-    var lastDatePurchase: Date
-    @Field(key: "phoneNumber")
-    var phoneNumber: String
-    @Field(key: "creditLimit")
-    var creditLimit: Int
-    @Field(key: "syncToken")
-    var syncToken: Int64
+    @Field(key: "customer_cic") var customerCic: String
+    @Field(key: "name") var name: String
+    @Field(key: "lastName") var lastName: String
+    @Field(key: "totalDebt") var totalDebt: Int
+    @Field(key: "creditScore") var creditScore: Int
+    @Field(key: "creditDays") var creditDays: Int
+    @Field(key: "isCreditLimitActive") var isCreditLimitActive: Bool
+    @Field(key: "isCreditLimit") var isCreditLimit: Bool
+    @Field(key: "isDateLimitActive") var isDateLimitActive: Bool
+    @Field(key: "isDateLimit") var isDateLimit: Bool
+    @Field(key: "dateLimit") var dateLimit: Date
+    @Field(key: "firstDatePurchaseWithCredit") var firstDatePurchaseWithCredit: Date?
+    @Field(key: "lastDatePurchase") var lastDatePurchase: Date
+    @Field(key: "phoneNumber") var phoneNumber: String
+    @Field(key: "creditLimit") var creditLimit: Int
+    @Field(key: "imageUrl") var imageUrl: String?
+    @Field(key: "syncToken") var syncToken: Int64
     
     //MARK: Timestamps
-    @Timestamp(key: "created_at", on: .create)
-    var createdAt: Date?
-    @Timestamp(key: "updated_at", on: .update)
-    var updatedAt: Date?
+    @Timestamp(key: "created_at", on: .create) var createdAt: Date?
+    @Timestamp(key: "updated_at", on: .update) var updatedAt: Date?
     
     
     //MARK: Relationship
-    @Parent(key: "company_id")
-    var company: Company
-    
-    //Imagen se debe pedir en el JSON
-    @OptionalParent(key: "imageUrl_id")
-    var imageUrl: ImageUrl?
-    
-    @Children(for: \.$customer)
-    var toSale: [Sale]
+    @Parent(key: "company_id") var company: Company
+    @Children(for: \.$customer) var toSale: [Sale]
     
     init() { }
     
     init(
-        id: UUID? = nil,
+        customerCic: String,
         name: String,
         lastName: String,
         totalDebt: Int,
@@ -82,11 +53,11 @@ final class Customer: Model, Syncronizable, @unchecked Sendable {
         lastDatePurchase: Date,
         phoneNumber: String,
         creditLimit: Int,
+        imageUrl: String?,
         syncToken: Int64,
-        companyID: Company.IDValue,
-        imageUrlID: ImageUrl.IDValue?
+        companyID: Company.IDValue
     ) {
-        self.id = id
+        self.customerCic = customerCic
         self.name = name
         self.lastName = lastName
         self.totalDebt = totalDebt
@@ -102,7 +73,16 @@ final class Customer: Model, Syncronizable, @unchecked Sendable {
         self.phoneNumber = phoneNumber
         self.creditLimit = creditLimit
         self.syncToken = syncToken
+        self.imageUrl = imageUrl
         self.$company.id = companyID
-        self.$imageUrl.id = imageUrlID
+    }
+}
+
+extension Customer {
+    static func findCustomer(customerCic: String?, on db: any Database) async throws -> Customer? {
+        guard let customerCic else { return nil }
+        return try await Customer.query(on: db)
+            .filter(Customer.self, \.$customerCic == customerCic)
+            .first()
     }
 }

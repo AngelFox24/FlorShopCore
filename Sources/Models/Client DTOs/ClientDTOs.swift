@@ -1,7 +1,6 @@
 import Vapor
-import FlorShop_DTOs
+import FlorShopDTOs
 
-extension ImageURLClientDTO: @retroactive Content {}
 extension CompanyClientDTO: @retroactive Content {}
 extension SubsidiaryClientDTO: @retroactive Content {}
 extension EmployeeClientDTO: @retroactive Content {}

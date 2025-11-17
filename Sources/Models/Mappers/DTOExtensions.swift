@@ -1,4 +1,4 @@
-import FlorShop_DTOs
+import FlorShopDTOs
 
 extension CompanyServerDTO {
     func isEqual(to other: Company) -> Bool {
@@ -9,7 +9,7 @@ extension CompanyServerDTO {
     }
     func clean() -> CompanyServerDTO {
         return CompanyServerDTO(
-            id: self.id,
+            companyCic: self.companyCic,
             companyName: self.companyName.cleaned,
             ruc: self.ruc.cleaned
         )
@@ -23,10 +23,27 @@ extension SubsidiaryServerDTO {
     }
     func clean() -> SubsidiaryServerDTO {
         return SubsidiaryServerDTO(
-            id: self.id,
+            subsidiaryCic: self.subsidiaryCic,
             name: self.name.cleaned,
-            companyID: self.companyID,
             imageUrl: self.imageUrl
+        )
+    }
+}
+extension ProductServerDTO {
+    func isMainEqual(to other: Product) -> Bool {
+        return (
+            self.barCode == other.barCode &&
+            self.productName == other.productName &&
+            self.unitType == other.unitType
+        )
+    }
+    func isChildEqual(to other: ProductSubsidiary) -> Bool {
+        return (
+            self.active == other.active &&
+            self.expirationDate == other.expirationDate &&
+            self.quantityStock == other.quantityStock &&
+            self.unitCost == other.unitCost &&
+            self.unitPrice == other.unitPrice
         )
     }
 }

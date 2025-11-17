@@ -1,5 +1,5 @@
 import Fluent
-import FlorShop_DTOs
+import FlorShopDTOs
 import Vapor
 
 enum PaymentType: CustomStringConvertible, Equatable {
@@ -85,12 +85,17 @@ extension SaleDetailError: AbortError {
 
 struct SaleController: RouteCollection {
     let syncManager: SyncManager
+    let validator: FlorShopAuthValitator
     func boot(routes: any RoutesBuilder) throws {
         let sales = routes.grouped("sales")
         sales.post(use: self.save)
     }
     @Sendable
     func save(req: Request) async throws -> DefaultResponse {
+        guard let token = req.headers.bearerAuthorization?.token else {
+            throw Abort(.unauthorized, reason: "Manda el scoped token mrda")
+        }
+        let payload = try await validator.verifyToken(token, client: req.client)
         let saleTransactionDTO = try req.content.decode(RegisterSaleParameters.self)
         let date: Date = Date()
         guard !saleTransactionDTO.cart.cartDetails.isEmpty else {
@@ -107,8 +112,13 @@ struct SaleController: RouteCollection {
         guard let employeeId = try await Employee.find(saleTransactionDTO.employeeId, on: req.db)?.id else {
             throw Abort(.badRequest, reason: "El empleado no existe")
         }
+        let oldGlobalToken: Int64 = await self.syncManager.getLastGlobalToken()
+        let oldBranchToken: Int64 = await self.syncManager.getLastBranchToken(subsidiaryCic: payload.subsidiaryCic)
         //Agregamos detalles a la venta
         let responseString = try await req.db.transaction { transaction -> String in
+            guard let subsidiaryEntity = try await Subsidiary.findSubsidiary(subsidiaryCic: payload.subsidiaryCic, on: transaction) else {
+                throw Abort(.badRequest, reason: "La subsidiaria no existe")
+            }
             guard let customer = try await Customer.find(saleTransactionDTO.customerId, on: transaction) else {
                 throw Abort(.badRequest, reason: "El cliente no existe")
             }
@@ -118,31 +128,30 @@ struct SaleController: RouteCollection {
                 paymentType: paymentType.description,
                 saleDate: date,
                 total: saleTransactionDTO.cart.total,
-                syncToken: await syncManager.nextToken(),
+                syncToken: await syncManager.nextBranchToken(subsidiaryCic: subsidiaryEntity.subsidiaryCic),
                 subsidiaryID: subsidiaryId,
-                customerID: customer.id,
-                employeeID: employeeId
+                employeeID: employeeId,
+                customerID: customer.id
             )
             try await saleNew.save(on: transaction)
             var totalOwn = 0
             for cartDetailDTO in saleTransactionDTO.cart.cartDetails {
-                let product = try await reduceStock(cartDetailDTO: cartDetailDTO, db: transaction)
-                try await product.update(on: transaction)
+                let productSubsidiary = try await reduceStock(cartDetailDTO: cartDetailDTO, subsidiaryCic: subsidiaryEntity.subsidiaryCic, db: transaction)
                 let saleDetailNew = SaleDetail(
                     id: UUID(),
-                    productName: product.productName,
-                    barCode: product.barCode,
+                    productName: productSubsidiary.product.productName,
+                    barCode: productSubsidiary.product.barCode,
                     quantitySold: cartDetailDTO.quantity,
                     subtotal: cartDetailDTO.subtotal,
-                    unitType: product.unitType,
-                    unitCost: product.unitCost,
-                    unitPrice: product.unitPrice,
-                    syncToken: await syncManager.nextToken(),
-                    saleID: saleId,
-                    imageUrlID: product.imageUrl?.id
+                    unitType: productSubsidiary.product.unitType,
+                    unitCost: productSubsidiary.unitCost,
+                    unitPrice: productSubsidiary.unitPrice,
+                    syncToken: await syncManager.nextBranchToken(subsidiaryCic: subsidiaryEntity.subsidiaryCic),
+                    imageUrl: productSubsidiary.product.imageUrl,
+                    saleID: saleId
                 )
                 try await saleDetailNew.save(on: transaction)
-                totalOwn += cartDetailDTO.quantity * product.unitPrice
+                totalOwn += cartDetailDTO.quantity * productSubsidiary.unitPrice
             }
             guard totalOwn == saleTransactionDTO.cart.total else {
                 print("Monto no coincide con el calculo de la BD, calculo real: \(totalOwn) calculo enviado: \(saleTransactionDTO.cart.total)")
@@ -163,10 +172,11 @@ struct SaleController: RouteCollection {
                     customer.isCreditLimit = false
                 }
             }
+            customer.syncToken = await self.syncManager.nextGlobalToken()
             try await customer.update(on: transaction)
             return ("Venta Exitosa")
         }
-        await self.syncManager.sendSyncData()
+        await self.syncManager.sendSyncData(oldGlobalToken: oldGlobalToken, oldBranchToken: oldBranchToken, subsidiaryCic: payload.subsidiaryCic)
         return DefaultResponse(message: responseString)
     }
 //    private func correctAmount(saleTransactionDTO: SaleTransactionDTO, db: any Database) async throws -> Bool {
@@ -175,19 +185,18 @@ struct SaleController: RouteCollection {
 //            
 //        }
 //    }
-    private func reduceStock(cartDetailDTO: CartDetailServerDTO, db: any Database) async throws -> Product {
-        let productEntity = try await Product.query(on: db)
-            .filter(\.$id == cartDetailDTO.productId)
-            .sort(\.$updatedAt, .ascending)
-            .with(\.$imageUrl)
-            .limit(1).first()
-        guard let product = productEntity else {
-            print("No se encontro este producto en la BD")
-            throw Abort(.badRequest, reason: "No se encontro este producto en la BD")
+    private func reduceStock(cartDetailDTO: CartDetailServerDTO, subsidiaryCic: String, db: any Database) async throws -> ProductSubsidiary {
+        guard let productSubsidiaryEntity = try await ProductSubsidiary.findProductSubsidiary(
+            productCic: cartDetailDTO.productCic,
+            subsisiaryCic: subsidiaryCic,
+            on: db
+        ) else {
+            throw Abort(.internalServerError, reason: "No se encontro este producto en la subsidiaria")
         }
-        if product.quantityStock >= cartDetailDTO.quantity {
-            product.quantityStock -= cartDetailDTO.quantity
-            return product
+        if productSubsidiaryEntity.quantityStock >= cartDetailDTO.quantity {
+            productSubsidiaryEntity.quantityStock -= cartDetailDTO.quantity
+            try await productSubsidiaryEntity.update(on: db)
+            return productSubsidiaryEntity
         } else {
             print("No hay stock suficiente")
             throw Abort(.badRequest, reason: "No hay stock suficiente")

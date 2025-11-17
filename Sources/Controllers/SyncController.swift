@@ -4,6 +4,7 @@ import Vapor
 struct SyncController: RouteCollection {
     let syncManager: SyncManager
     let syncLimit: Int = 50
+    let validator: FlorShopAuthValitator
     func boot(routes: any RoutesBuilder) throws {
         let subsidiaries = routes.grouped("sync")
         subsidiaries.post(use: self.sync)
@@ -12,40 +13,51 @@ struct SyncController: RouteCollection {
     @Sendable
     func sync(req: Request) async throws -> SyncClientParameters {
         print("Api version 2.0")
+        guard let token = req.headers.bearerAuthorization?.token else {
+            throw Abort(.unauthorized, reason: "Manda el token mrda")
+        }
+        let payload = try await validator.verifyToken(token, client: req.client)
         let request = try req.content.decode(SyncServerParameters.self)
         let syncOutputParameters: SyncClientParameters = try await req.db.transaction { transaction in
-            let clientToken = request.syncToken
-            let lastToken = await syncManager.getLastSyncToken()
-            guard clientToken < lastToken else {
-                return SyncClientParameters.empty(lastToken: lastToken)
-            }
-            var tokenLimit = clientToken + Int64(syncLimit)
-            if lastToken < tokenLimit {
-                tokenLimit = lastToken
-            }
-            print("[SyncController] New Request, startToken: \(clientToken), endToken: \(tokenLimit)")
-            async let images = self.getChangedImages(startToken: clientToken, endToken: tokenLimit, sessionConfig: request.sessionConfig, db: transaction)
-            async let company = self.getChangedCompany(startToken: clientToken, endToken: tokenLimit, sessionConfig: request.sessionConfig, db: transaction)
-            async let subsidiaries = self.getChangedSubsidiaries(startToken: clientToken, endToken: tokenLimit, sessionConfig: request.sessionConfig, db: transaction)
-            async let employees = self.getChangedEmployees(startToken: clientToken, endToken: tokenLimit, sessionConfig: request.sessionConfig, db: transaction)
-            async let customers = self.getChangedCustomers(startToken: clientToken, endToken: tokenLimit, sessionConfig: request.sessionConfig, db: transaction)
-            async let products = self.getChangedProducts(startToken: clientToken, endToken: tokenLimit, sessionConfig: request.sessionConfig, db: transaction)
-            async let sales = self.getChangedSales(startToken: clientToken, endToken: tokenLimit, sessionConfig: request.sessionConfig, db: transaction)
-            async let salesDetail = self.getChangedSalesDetail(startToken: clientToken, endToken: tokenLimit, sessionConfig: request.sessionConfig, db: transaction)
+            let clientGlobalToken = request.globalSyncToken
+            let clientBranchToken = request.branchSyncToken
+            let serverGlobalToken = await self.syncManager.getLastGlobalToken()
+            let serverBranchToken = await self.syncManager.getLastBranchToken(subsidiaryCic: payload.subsidiaryCic)
+            
+            let fetchGlobalEntities: Bool = clientGlobalToken < serverGlobalToken
+            let fetchBranchEntities: Bool = clientBranchToken < serverBranchToken
+            
+            let globalTokenLimit = min(clientGlobalToken + Int64(syncLimit), serverGlobalToken)
+            let branchTokenLimit = min(clientBranchToken + Int64(syncLimit), serverBranchToken)
+//            print("[SyncController] New Request, startToken: \(clientToken), endToken: \(tokenLimit)")
+            //MARK: Global Sync
+            let syncGlobalFetchParam = GlobalSyncFetchParams(startToken: clientGlobalToken, endToken: globalTokenLimit)
+            async let company = fetchGlobalEntities ? self.getChangedCompany(syncFetchParam: syncGlobalFetchParam, db: transaction) : nil
+            async let subsidiaries = fetchGlobalEntities ? self.getChangedSubsidiaries(syncFetchParam: syncGlobalFetchParam, db: transaction) : []
+            async let customers = fetchGlobalEntities ? self.getChangedCustomers(syncFetchParam: syncGlobalFetchParam, db: transaction) : []
+            async let products = fetchGlobalEntities ? self.getChangedProducts(syncFetchParam: syncGlobalFetchParam, db: transaction) : []
+            //MARK: Branch Sync
+            let syncBranchFetchParam = BranchSyncFetchParams(startToken: clientBranchToken, endToken: branchTokenLimit, subsidiaryCic: payload.subsidiaryCic)
+            async let employees = fetchBranchEntities ? self.getChangedEmployees(syncFetchParam: syncBranchFetchParam, db: transaction) : []
+            async let productsSubsidiary = fetchBranchEntities ? self.getChangedProductsSubsidiary(syncFetchParam: syncBranchFetchParam, db: transaction) : []
+            async let sales = fetchBranchEntities ? self.getChangedSales(syncFetchParam: syncBranchFetchParam, db: transaction) : []
+            async let salesDetail = fetchBranchEntities ? self.getChangedSalesDetail(syncFetchParam: syncBranchFetchParam, db: transaction) : []
 
             // Esperar todos en paralelo
             return SyncClientParameters(
-                images: try await images.mapToListImageURLDTO(),
                 company: try await company?.toCompanyDTO(),
                 //Company puede ser nulo, casi siempre no se actualiza
                 subsidiaries: try await subsidiaries.mapToListSubsidiaryDTO(),
                 employees: try await employees.mapToListEmployeeDTO(),
                 customers: try await customers.mapToListCustomerDTO(),
                 products: try await products.mapToListProductDTO(),
+                productsSubsidiary: try await productsSubsidiary.mapToListProductSubsidiaryDTO(),
                 sales: try await sales.mapToListSaleDTO(),
                 salesDetail: try await salesDetail.mapToListSaleDetailDTO(),
-                lastToken: tokenLimit,
-                isUpToDate: tokenLimit == lastToken
+                lastGlobalToken: globalTokenLimit,
+                isGlobalUpToDate: globalTokenLimit == serverGlobalToken,
+                lastBranchToken: branchTokenLimit,
+                isBranchUpToDate: branchTokenLimit == serverBranchToken
             )
         }
         return syncOutputParameters
@@ -53,9 +65,20 @@ struct SyncController: RouteCollection {
     @Sendable
     func handleWebSocket(req: Request, ws: WebSocket) async {
         print("WebSocket version 2.0")
+        guard let token = req.headers.bearerAuthorization?.token else {
+            ws.close(promise: nil)
+            return
+        }
+        do {
+            let payload = try await validator.verifyToken(token, client: req.client)
+            try await syncManager.addClient(ws: ws, subsidiaryCic: payload.subsidiaryCic)
+        } catch {
+            // Token no valido → cerrar
+            ws.close(promise: nil)
+            return
+        }
         // Establece un intervalo de ping
         ws.pingInterval = .seconds(10)
-        try? await syncManager.addClient(ws: ws)
         
         ws.onClose.whenComplete { _ in
             Task {
@@ -63,60 +86,75 @@ struct SyncController: RouteCollection {
             }
         }
     }
-    //TODO: Filter for subsidiary's scope from sessionConfig
-    private func getChangedImages(startToken: Int64, endToken: Int64, sessionConfig: SessionConfig, db: any Database) async throws -> [ImageUrl] {
-        try await ImageUrl.query(on: db)
-            .filter(\.$syncToken > startToken)
-            .filter(\.$syncToken <= endToken)
-            .all()
-    }
-    private func getChangedCompany(startToken: Int64, endToken: Int64, sessionConfig: SessionConfig, db: any Database) async throws -> Company? {
+    //MARK: Fetch Global Tables
+    private func getChangedCompany(syncFetchParam: GlobalSyncFetchParams, db: any Database) async throws -> Company? {
         try await Company.query(on: db)
-            .filter(\.$syncToken > startToken)
-            .filter(\.$syncToken <= endToken)
+            .filter(Company.self, \.$syncToken > syncFetchParam.startToken)
+            .filter(Company.self, \.$syncToken <= syncFetchParam.endToken)
             .limit(1)
-            .all()
-            .first
+            .first()
     }
-    private func getChangedSubsidiaries(startToken: Int64, endToken: Int64, sessionConfig: SessionConfig, db: any Database) async throws -> [Subsidiary] {
+    private func getChangedSubsidiaries(syncFetchParam: GlobalSyncFetchParams, db: any Database) async throws -> [Subsidiary] {
         try await Subsidiary.query(on: db)
-            .filter(\.$syncToken > startToken)
-            .filter(\.$syncToken <= endToken)
-            .with(\.$imageUrl)
+            .filter(Subsidiary.self, \.$syncToken > syncFetchParam.startToken)
+            .filter(Subsidiary.self, \.$syncToken <= syncFetchParam.endToken)
             .all()
     }
-    private func getChangedCustomers(startToken: Int64, endToken: Int64, sessionConfig: SessionConfig, db: any Database) async throws -> [Customer] {
+    private func getChangedCustomers(syncFetchParam: GlobalSyncFetchParams, db: any Database) async throws -> [Customer] {
         try await Customer.query(on: db)
-            .filter(\.$syncToken > startToken)
-            .filter(\.$syncToken <= endToken)
-            .with(\.$imageUrl)
+            .filter(Customer.self, \.$syncToken > syncFetchParam.startToken)
+            .filter(Customer.self, \.$syncToken <= syncFetchParam.endToken)
             .all()
     }
-    private func getChangedEmployees(startToken: Int64, endToken: Int64, sessionConfig: SessionConfig, db: any Database) async throws -> [Employee] {
-        try await Employee.query(on: db)
-            .filter(\.$syncToken > startToken)
-            .filter(\.$syncToken <= endToken)
-            .with(\.$imageUrl)
-            .all()
-    }
-    private func getChangedProducts(startToken: Int64, endToken: Int64, sessionConfig: SessionConfig, db: any Database) async throws -> [Product] {
+    private func getChangedProducts(syncFetchParam: GlobalSyncFetchParams, db: any Database) async throws -> [Product] {
         try await Product.query(on: db)
-            .filter(\.$syncToken > startToken)
-            .filter(\.$syncToken <= endToken)
-            .with(\.$imageUrl)
+            .filter(Product.self, \.$syncToken > syncFetchParam.startToken)
+            .filter(Product.self, \.$syncToken <= syncFetchParam.endToken)
             .all()
     }
-    private func getChangedSales(startToken: Int64, endToken: Int64, sessionConfig: SessionConfig, db: any Database) async throws -> [Sale] {
+    //MARK: Fetch Branch Tables
+    private func getChangedEmployees(syncFetchParam: BranchSyncFetchParams, db: any Database) async throws -> [Employee] {
+        try await Employee.query(on: db)
+            .join(Subsidiary.self, on: \Subsidiary.$id == \Employee.$subsidiary.$id)
+            .filter(Subsidiary.self, \.$subsidiaryCic == syncFetchParam.subsidiaryCic)
+            .filter(Employee.self, \.$syncToken > syncFetchParam.startToken)
+            .filter(Employee.self, \.$syncToken <= syncFetchParam.endToken)
+            .all()
+    }
+    private func getChangedProductsSubsidiary(syncFetchParam: BranchSyncFetchParams, db: any Database) async throws -> [ProductSubsidiary] {
+        try await ProductSubsidiary.query(on: db)
+            .join(Subsidiary.self, on: \Subsidiary.$id == \ProductSubsidiary.$subsidiary.$id)
+            .filter(Subsidiary.self, \.$subsidiaryCic == syncFetchParam.subsidiaryCic)
+            .filter(ProductSubsidiary.self, \.$syncToken > syncFetchParam.startToken)
+            .filter(ProductSubsidiary.self, \.$syncToken <= syncFetchParam.endToken)
+            .all()
+    }
+    private func getChangedSales(syncFetchParam: BranchSyncFetchParams, db: any Database) async throws -> [Sale] {
         try await Sale.query(on: db)
-            .filter(\.$syncToken > startToken)
-            .filter(\.$syncToken <= endToken)
+            .join(Subsidiary.self, on: \Subsidiary.$id == \Sale.$subsidiary.$id)
+            .filter(Subsidiary.self, \.$subsidiaryCic == syncFetchParam.subsidiaryCic)
+            .filter(Sale.self, \.$syncToken > syncFetchParam.startToken)
+            .filter(Sale.self, \.$syncToken <= syncFetchParam.endToken)
             .all()
     }
-    private func getChangedSalesDetail(startToken: Int64, endToken: Int64, sessionConfig: SessionConfig, db: any Database) async throws -> [SaleDetail] {
+    private func getChangedSalesDetail(syncFetchParam: BranchSyncFetchParams, db: any Database) async throws -> [SaleDetail] {
         try await SaleDetail.query(on: db)
-            .filter(\.$syncToken > startToken)
-            .filter(\.$syncToken <= endToken)
-            .with(\.$imageUrl)
+            .join(Sale.self, on: \Sale.$id == \SaleDetail.$sale.$id)
+            .join(Subsidiary.self, on: \Subsidiary.$id == \Sale.$subsidiary.$id)
+            .filter(Subsidiary.self, \.$subsidiaryCic == syncFetchParam.subsidiaryCic)
+            .filter(SaleDetail.self, \.$syncToken > syncFetchParam.startToken)
+            .filter(SaleDetail.self, \.$syncToken <= syncFetchParam.endToken)
             .all()
     }
+}
+
+struct GlobalSyncFetchParams {
+    let startToken: Int64
+    let endToken: Int64
+}
+
+struct BranchSyncFetchParams {
+    let startToken: Int64
+    let endToken: Int64
+    let subsidiaryCic: String
 }
