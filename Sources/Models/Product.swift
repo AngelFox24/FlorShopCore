@@ -1,6 +1,7 @@
 import Fluent
 import Foundation
 import struct Foundation.UUID
+import FlorShopDTOs
 
 final class Product: Model, @unchecked Sendable {
     static let schema = "products"
@@ -10,7 +11,7 @@ final class Product: Model, @unchecked Sendable {
     @Field(key: "product_cic") var productCic: String
     @Field(key: "barCode") var barCode: String
     @Field(key: "productName") var productName: String
-    @Field(key: "unitType") var unitType: String
+    @Field(key: "unitType") var unitType: UnitType
     @Field(key: "imageUrl") var imageUrl: String?
     @Field(key: "syncToken") var syncToken: Int64
     
@@ -28,7 +29,7 @@ final class Product: Model, @unchecked Sendable {
         productCic: String,
         barCode: String,
         productName: String,
-        unitType: String,
+        unitType: UnitType,
         syncToken: Int64,
         imageUrl: String?,
         companyID: Company.IDValue
@@ -44,8 +45,7 @@ final class Product: Model, @unchecked Sendable {
 }
 
 extension Product {
-    static func findProduct(productCic: String?, on db: any Database) async throws -> Product? {
-        guard let productCic else { return nil }
+    static func findProduct(productCic: String, on db: any Database) async throws -> Product? {
         return try await Product.query(on: db)
             .filter(Product.self, \.$productCic == productCic)
             .first()

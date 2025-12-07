@@ -12,6 +12,7 @@ enum Entrypoint {
         let app = try await Application.make(env)
         
         do {
+            try EnvironmentVariables.validate(envName: env.name)
             try await configure(app)
             try await app.execute()
         } catch {

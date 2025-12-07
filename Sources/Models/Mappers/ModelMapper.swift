@@ -132,16 +132,27 @@ extension Employee {
     func toEmployeeDTO() -> EmployeeClientDTO {
         return EmployeeClientDTO(
             employeeCic: employeeCic,
-            user: user,
             name: name,
             lastName: lastName,
             email: email,
             phoneNumber: phoneNumber,
+            syncToken: syncToken,
+            companyCic: self.company.companyCic,
+            imageUrl: imageUrl,
+            createdAt: createdAt!,
+            updatedAt: updatedAt!
+        )
+    }
+}
+
+extension EmployeeSubsidiary {
+    func toEmployeeSubsidiaryDTO() -> EmployeeSubsidiaryClientDTO {
+        return EmployeeSubsidiaryClientDTO(
             role: role,
             active: active,
             syncToken: syncToken,
             subsidiaryCic: self.subsidiary.subsidiaryCic,
-            imageUrl: imageUrl,
+            employeeCic: self.employee.employeeCic,
             createdAt: createdAt!,
             updatedAt: updatedAt!
         )
@@ -176,6 +187,11 @@ extension Array where Element == Customer {
 extension Array where Element == Employee {
     func mapToListEmployeeDTO() -> [EmployeeClientDTO] {
         return self.compactMap({$0.toEmployeeDTO()})
+    }
+}
+extension Array where Element == EmployeeSubsidiary {
+    func mapToListEmployeeSubsidiaryDTO() -> [EmployeeSubsidiaryClientDTO] {
+        return self.compactMap({$0.toEmployeeSubsidiaryDTO()})
     }
 }
 extension Array where Element == Subsidiary {

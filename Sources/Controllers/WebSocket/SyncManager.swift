@@ -73,20 +73,4 @@ actor SyncManager {
             await webSocketManager.branchBroadcast(subsidiaryCic: subsidiaryCic, syncToken: tokens)
         }
     }
-//    func sendGlobalSyncData() async {
-//        let globalToken = await self.globalManager.tokenValue()
-//        let tokens = SyncTokensDTO(
-//            globalToken: globalToken,
-//            branchToken: nil
-//        )
-//        await webSocketManager.globalBroadcast(tokens)
-//    }
-//    func sendBranchSyncData(subsidiaryCic: String) async {
-//        let branchToken = await self.branchManager.tokenValue(subsidiaryCic: subsidiaryCic)
-//        let tokens = SyncTokensDTO(
-//            globalToken: nil,
-//            branchToken: branchToken
-//        )
-//        await webSocketManager.branchBroadcast(subsidiaryCic: subsidiaryCic, syncToken: tokens)
-//    }
 }

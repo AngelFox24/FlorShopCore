@@ -5,6 +5,7 @@ import Vapor
 struct CompanyController: RouteCollection {
     let syncManager: SyncManager
     let validator: FlorShopAuthValitator
+    let florShopAuthProvider: FlorShopAuthProvider
     func boot(routes: any RoutesBuilder) throws {
         let companies = routes.grouped("companies")
         companies.get(use: self.test)
@@ -19,7 +20,7 @@ struct CompanyController: RouteCollection {
         guard let token = req.headers.bearerAuthorization?.token else {
             throw Abort(.unauthorized, reason: "Manda el token mrda")
         }
-        let payload = try await validator.verifyToken(token, client: req.client)
+        let payload: ScopedTokenPayload = try await validator.verifyToken(token, client: req.client)
         let companyDTO = try req.content.decode(CompanyServerDTO.self).clean()
         try companyDTO.validate()
         let responseText: String
@@ -30,6 +31,9 @@ struct CompanyController: RouteCollection {
             guard !companyDTO.isEqual(to: company) else {
                 return DefaultResponse(message: "Not Updated, is equal")
             }
+            //TODO: Segregate this in a function
+            let internalToken = try await TokenService.generateInternalToken(scopedToken: payload, req: req)
+            try await self.florShopAuthProvider.updateCompany(request: companyDTO, internalToken: internalToken)
             company.companyName = companyDTO.companyName
             company.ruc = companyDTO.ruc
             company.syncToken = await syncManager.nextGlobalToken()

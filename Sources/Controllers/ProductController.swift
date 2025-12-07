@@ -8,7 +8,7 @@ struct ProductController: RouteCollection {
     func boot(routes: any RoutesBuilder) throws {
         let products = routes.grouped("products")
         products.post(use: self.save)
-//        products.post("bulkCreate", use: self.bulkCreate)
+        //        products.post("bulkCreate", use: self.bulkCreate)
     }
     @Sendable
     func save(req: Request) async throws -> DefaultResponse {
@@ -27,8 +27,11 @@ struct ProductController: RouteCollection {
                   let subsidiaryId = subsidiaryEntity.id else {
                 throw Abort(.badRequest, reason: "La subsidiaria no existe")
             }
-            if let product = try await Product.findProduct(productCic: productDTO.productCic, on: transaction) {
+            if let productCic = productDTO.productCic {//Tiene la intension de actualizar un producto
                 var result = "Don't updated"
+                guard let product = try await Product.findProduct(productCic: productCic, on: transaction) else {
+                    throw Abort(.badRequest, reason: "El producto no existe para ser actualizado")
+                }
                 if !productDTO.isMainEqual(to: product) {
                     //Update
                     if product.productName != productDTO.productName {
@@ -138,23 +141,23 @@ struct ProductController: RouteCollection {
             return false
         }
     }
-//    @Sendable
-//    func bulkCreate(req: Request) async throws -> DefaultResponse {
-//        //No controla elementos repetidos osea Update
-//        let productsDTO = try req.content.decode([ProductServerDTO].self)
-//
-//        // Iniciar la transacción
-//        return try await req.db.transaction { transaction in
-//            // Iterar sobre cada producto y guardarlo
-//            for productDTO in productsDTO {
-//                let _ = productDTO.imageUrl
-////                if let imageUrl = imageUrlDTO?.toImageUrl() {
-////                    try await imageUrl.save(on: transaction)
-////                }
-//                let product = productDTO.toProduct()
-//                try await product.save(on: transaction)
-//            }
-//            return DefaultResponse(message: "Created")
-//        }
-//    }
+    //    @Sendable
+    //    func bulkCreate(req: Request) async throws -> DefaultResponse {
+    //        //No controla elementos repetidos osea Update
+    //        let productsDTO = try req.content.decode([ProductServerDTO].self)
+    //
+    //        // Iniciar la transacción
+    //        return try await req.db.transaction { transaction in
+    //            // Iterar sobre cada producto y guardarlo
+    //            for productDTO in productsDTO {
+    //                let _ = productDTO.imageUrl
+    ////                if let imageUrl = imageUrlDTO?.toImageUrl() {
+    ////                    try await imageUrl.save(on: transaction)
+    ////                }
+    //                let product = productDTO.toProduct()
+    //                try await product.save(on: transaction)
+    //            }
+    //            return DefaultResponse(message: "Created")
+    //        }
+    //    }
 }

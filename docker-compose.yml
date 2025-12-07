@@ -38,7 +38,7 @@ services:
     build:
       context: .
     env_file:
-      - .env.production
+      - .env.development
     depends_on:
       - db
     ports:
@@ -52,7 +52,7 @@ services:
     build:
       context: .
     env_file:
-      - .env.production
+      - .env.development
     depends_on:
       - db
     command: ["migrate", "--yes"]
@@ -63,7 +63,7 @@ services:
     build:
       context: .
     env_file:
-      - .env.production
+      - .env.development
     depends_on:
       - db
     command: ["migrate", "--revert", "--yes"]
@@ -75,6 +75,6 @@ services:
     volumes:
       - florshopcore_db_data:/var/lib/postgresql/data/pgdata
     env_file:
-      - .env.production
+      - .env.development
     ports:
       - '5432:5432'

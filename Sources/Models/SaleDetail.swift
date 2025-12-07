@@ -1,6 +1,7 @@
 import Fluent
 import Foundation
 import struct Foundation.UUID
+import FlorShopDTOs
 
 final class SaleDetail: Model, @unchecked Sendable {
     static let schema = "saleDetails"
@@ -11,7 +12,7 @@ final class SaleDetail: Model, @unchecked Sendable {
     @Field(key: "barCode") var barCode: String
     @Field(key: "quantitySold") var quantitySold: Int
     @Field(key: "subtotal") var subtotal: Int
-    @Field(key: "unitType") var unitType: String
+    @Field(key: "unitType") var unitType: UnitType
     @Field(key: "unitCost") var unitCost: Int
     @Field(key: "unitPrice") var unitPrice: Int
     @Field(key: "imageUrl") var imageUrl: String?
@@ -32,7 +33,7 @@ final class SaleDetail: Model, @unchecked Sendable {
         barCode: String,
         quantitySold: Int,
         subtotal: Int,
-        unitType: String,
+        unitType: UnitType,
         unitCost: Int,
         unitPrice: Int,
         syncToken: Int64,

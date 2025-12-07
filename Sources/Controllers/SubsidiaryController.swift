@@ -5,6 +5,7 @@ import Vapor
 struct SubsidiaryController: RouteCollection {
     let syncManager: SyncManager
     let validator: FlorShopAuthValitator
+    let florShopAuthProvider: FlorShopAuthProvider
     func boot(routes: any RoutesBuilder) throws {
         let subsidiaries = routes.grouped("subsidiaries")
         subsidiaries.post(use: self.save)
@@ -20,7 +21,11 @@ struct SubsidiaryController: RouteCollection {
         let oldGlobalToken: Int64 = await self.syncManager.getLastGlobalToken()
         let oldBranchToken: Int64 = await self.syncManager.getLastBranchToken(subsidiaryCic: payload.subsidiaryCic)
         let responseString: String = try await req.db.transaction { transaction -> String in
-            if let subsidiary = try await Subsidiary.findSubsidiary(subsidiaryCic: subsidiaryDTO.subsidiaryCic, on: transaction) {
+            let role: UserSubsidiaryRole
+            if let subsidiaryCic = subsidiaryDTO.subsidiaryCic {
+                guard let subsidiary = try await Subsidiary.findSubsidiary(subsidiaryCic: subsidiaryCic, on: transaction) else {
+                    throw Abort(.badRequest, reason: "Subsidiaria no encontrada para ser actualizada")
+                }
                 guard !subsidiaryDTO.isEqual(to: subsidiary) else {
                     throw Abort(.badRequest, reason: "Not Updated, is equal")
                 }
@@ -28,6 +33,20 @@ struct SubsidiaryController: RouteCollection {
                 guard try await !Subsidiary.nameExist(name: subsidiaryDTO.name, on: transaction) else {
                     throw Abort(.badRequest, reason: "La subsidiaria con este nombre ya existe")
                 }
+                //TODO: Segregate this in a fucntion
+                if let employeeSubsidiary = try await EmployeeSubsidiary.findEmployeeSubsidiary(employeeCic: payload.sub.value, subsisiaryCic: subsidiaryCic, on: transaction) {
+                    //Primero intentamos asignar el mismo rol de la subsidiaria de destino
+                    role = employeeSubsidiary.role
+                } else if let employeeSubsidiary = try await EmployeeSubsidiary.findEmployeeSubsidiary(employeeCic: payload.sub.value, subsisiaryCic: payload.subsidiaryCic, on: transaction) {
+                    //Si no intentamos de la misma subsidiaria donde obtuvo el ScopedToken
+                    role = employeeSubsidiary.role
+                } else {
+                    throw Abort(.failedDependency, reason: "Empleado no encontrado para esta subsidiaria incluso teniendo el ScopedToken")
+                }
+                //TODO: First send a request a FlorShopAuth to update the name of company
+                let internalToken = try await TokenService.generateInternalToken(scopedToken: payload, req: req)
+                let request = RegisterSubsidiaryRequest(subsidiary: subsidiaryDTO, role: role)
+                try await self.florShopAuthProvider.saveSubsidiary(request: request, internalToken: internalToken)
                 subsidiary.name = subsidiaryDTO.name
                 subsidiary.imageUrl = subsidiaryDTO.imageUrl
                 subsidiary.syncToken = await self.syncManager.nextGlobalToken()
@@ -40,6 +59,17 @@ struct SubsidiaryController: RouteCollection {
                 guard let companyId = try await Company.findCompany(companyCic: payload.companyCic, on: transaction)?.id else {
                     throw Abort(.badRequest, reason: "La compañia no existe existe")
                 }
+                //TODO: Segregate this in a fucntion
+                if let employeeSubsidiary = try await EmployeeSubsidiary.findEmployeeSubsidiary(employeeCic: payload.sub.value, subsisiaryCic: payload.subsidiaryCic, on: transaction) {
+                    //Intentamos asignar el rol de la misma subsidiaria donde obtuvo el ScopedToken
+                    role = employeeSubsidiary.role
+                } else {
+                    throw Abort(.failedDependency, reason: "Empleado no encontrado para esta subsidiaria incluso teniendo el ScopedToken")
+                }
+                //TODO: First send a request a FlorShopAuth to update the name of company
+                let internalToken = try await TokenService.generateInternalToken(scopedToken: payload, req: req)
+                let request = RegisterSubsidiaryRequest(subsidiary: subsidiaryDTO, role: role)
+                try await self.florShopAuthProvider.saveSubsidiary(request: request, internalToken: internalToken)
                 let subsidiaryNew = Subsidiary(
                     subsidiaryCic: UUID().uuidString,
                     name: subsidiaryDTO.name,

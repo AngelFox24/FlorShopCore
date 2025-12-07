@@ -3,10 +3,14 @@ import Fluent
 import JWT
 
 actor FlorShopAuthValitator {
-    private let jwksURL = URI(string: "https://auth.mrangel.dev/auth")
+    private let jwksURL:URI
     private var cachedJWKS: JWKS?
     private var eTag: String?
     private var expirationDate: Date?
+    
+    init(jwksURL: String = "https://auth.mrangel.dev") {
+        self.jwksURL = URI(string: jwksURL + "/auth")
+    }
     
     func verifyToken(_ token: String, client: any Client) async throws -> ScopedTokenPayload {
         // 1️⃣ Obtener las llaves públicas (puedes cachearlas luego)

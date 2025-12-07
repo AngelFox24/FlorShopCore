@@ -9,7 +9,6 @@ extension CompanyServerDTO {
     }
     func clean() -> CompanyServerDTO {
         return CompanyServerDTO(
-            companyCic: self.companyCic,
             companyName: self.companyName.cleaned,
             ruc: self.ruc.cleaned
         )
@@ -44,6 +43,23 @@ extension ProductServerDTO {
             self.quantityStock == other.quantityStock &&
             self.unitCost == other.unitCost &&
             self.unitPrice == other.unitPrice
+        )
+    }
+}
+extension EmployeeServerDTO {
+    func isMainEqual(to other: Employee) -> Bool {
+        return (
+            self.name == other.name &&
+            self.lastName == other.lastName &&
+            self.email == other.email &&
+            self.phoneNumber == other.phoneNumber &&
+            self.imageUrl == other.imageUrl
+        )
+    }
+    func isChildEqual(to other: EmployeeSubsidiary) -> Bool {
+        return (
+            self.active == other.active &&
+            self.role == other.role
         )
     }
 }

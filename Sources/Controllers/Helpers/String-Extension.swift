@@ -1,10 +1,3 @@
-//
-//  File.swift
-//  FlorApiRest
-//
-//  Created by Angel Curi Laurente on 13/07/2025.
-//
-
 extension String {
     var cleaned: String {
         self

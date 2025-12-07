@@ -10,7 +10,7 @@ final class Customer: Model, @unchecked Sendable {
     
     @Field(key: "customer_cic") var customerCic: String
     @Field(key: "name") var name: String
-    @Field(key: "lastName") var lastName: String
+    @Field(key: "lastName") var lastName: String?
     @Field(key: "totalDebt") var totalDebt: Int
     @Field(key: "creditScore") var creditScore: Int
     @Field(key: "creditDays") var creditDays: Int
@@ -21,7 +21,7 @@ final class Customer: Model, @unchecked Sendable {
     @Field(key: "dateLimit") var dateLimit: Date
     @Field(key: "firstDatePurchaseWithCredit") var firstDatePurchaseWithCredit: Date?
     @Field(key: "lastDatePurchase") var lastDatePurchase: Date
-    @Field(key: "phoneNumber") var phoneNumber: String
+    @Field(key: "phoneNumber") var phoneNumber: String?
     @Field(key: "creditLimit") var creditLimit: Int
     @Field(key: "imageUrl") var imageUrl: String?
     @Field(key: "syncToken") var syncToken: Int64
@@ -40,7 +40,7 @@ final class Customer: Model, @unchecked Sendable {
     init(
         customerCic: String,
         name: String,
-        lastName: String,
+        lastName: String?,
         totalDebt: Int,
         creditScore: Int,
         creditDays: Int,
@@ -51,7 +51,7 @@ final class Customer: Model, @unchecked Sendable {
         dateLimit: Date,
         firstDatePurchaseWithCredit: Date?,
         lastDatePurchase: Date,
-        phoneNumber: String,
+        phoneNumber: String?,
         creditLimit: Int,
         imageUrl: String?,
         syncToken: Int64,

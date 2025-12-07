@@ -22,8 +22,9 @@ actor GlobalSyncTokenManager {
         let max2 = try await Subsidiary.query(on: db).max(\.$syncToken) ?? 0
         let max3 = try await Product.query(on: db).max(\.$syncToken) ?? 0
         let max4 = try await Customer.query(on: db).max(\.$syncToken) ?? 0
+        let max5 = try await Employee.query(on: db).max(\.$syncToken) ?? 0
         
-        let initialToken = max(max1, max2, max3, max4)
+        let initialToken = max(max1, max2, max3, max4, max5)
         return GlobalSyncTokenManager(initialValue: initialToken)
     }
 }

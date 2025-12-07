@@ -1,13 +1,14 @@
 import Fluent
 import Foundation
 import struct Foundation.UUID
+import FlorShopDTOs
 
 final class Sale: Model, @unchecked Sendable {
     static let schema = "sales"
     
     @ID(key: .id) var id: UUID?
     
-    @Field(key: "paymentType") var paymentType: String
+    @Field(key: "paymentType") var paymentType: PaymentType
     @Field(key: "saleDate") var saleDate: Date
     @Field(key: "total") var total: Int
     @Field(key: "syncToken") var syncToken: Int64
@@ -27,7 +28,7 @@ final class Sale: Model, @unchecked Sendable {
     
     init(
         id: UUID? = nil,
-        paymentType: String,
+        paymentType: PaymentType,
         saleDate: Date,
         total: Int,
         syncToken: Int64,

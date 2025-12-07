@@ -2,45 +2,6 @@ import Fluent
 import FlorShopDTOs
 import Vapor
 
-enum PaymentType: CustomStringConvertible, Equatable {
-    case cash
-    case loan
-    var description: String {
-        switch self {
-        case .cash:
-            return "Efectivo"
-        case .loan:
-            return "Fiado"
-        }
-    }
-    var icon: String {
-        switch self {
-        case .cash:
-            return "dollarsign"
-        case .loan:
-            return "list.clipboard"
-        }
-    }
-    static var allValues: [PaymentType] {
-        return [.cash, .loan]
-    }
-    static func == (lhs: PaymentType, rhs: PaymentType) -> Bool {
-        return lhs.description == rhs.description
-    }
-    static func from(description: String) throws -> PaymentType? {
-//        for case let tipo in PaymentType.allValues where tipo.description == description {
-//            return tipo
-//        }
-        var result: PaymentType?
-        for tipo in PaymentType.allValues {
-            if tipo.description == description {
-                result = tipo
-            }
-        }
-        return result
-    }
-}
-
 enum SaleError: Error {
     case alreadyExist
 }
@@ -102,14 +63,10 @@ struct SaleController: RouteCollection {
             print("No se encontro productos en la solicitud de venta")
             throw Abort(.badRequest, reason: "No se encontro productos en la solicitud de venta")
         }
-        guard let paymentType = try PaymentType.from(description: saleTransactionDTO.paymentType) else {
-            print("El tipo de Pago no existe")
-            throw Abort(.badRequest, reason: "El tipo de Pago no existe")
-        }
-        guard let subsidiaryId = try await Subsidiary.find(saleTransactionDTO.subsidiaryId, on: req.db)?.id else {
+        guard let subsidiaryId = try await Subsidiary.findSubsidiary(subsidiaryCic: payload.subsidiaryCic, on: req.db)?.id else {
             throw Abort(.badRequest, reason: "La subsidiaria no existe")
         }
-        guard let employeeId = try await Employee.find(saleTransactionDTO.employeeId, on: req.db)?.id else {
+        guard let employeeId = try await Employee.findEmployee(employeeCic: payload.sub.value, subsidiaryCic: payload.subsidiaryCic, on: req.db)?.id else {
             throw Abort(.badRequest, reason: "El empleado no existe")
         }
         let oldGlobalToken: Int64 = await self.syncManager.getLastGlobalToken()
@@ -119,13 +76,13 @@ struct SaleController: RouteCollection {
             guard let subsidiaryEntity = try await Subsidiary.findSubsidiary(subsidiaryCic: payload.subsidiaryCic, on: transaction) else {
                 throw Abort(.badRequest, reason: "La subsidiaria no existe")
             }
-            guard let customer = try await Customer.find(saleTransactionDTO.customerId, on: transaction) else {
+            guard let customer = try await Customer.findCustomer(customerCic: saleTransactionDTO.customerCic, on: transaction) else {
                 throw Abort(.badRequest, reason: "El cliente no existe")
             }
             let saleId = UUID()
             let saleNew = Sale(
                 id: saleId,
-                paymentType: paymentType.description,
+                paymentType: saleTransactionDTO.paymentType,
                 saleDate: date,
                 total: saleTransactionDTO.cart.total,
                 syncToken: await syncManager.nextBranchToken(subsidiaryCic: subsidiaryEntity.subsidiaryCic),
@@ -163,7 +120,7 @@ struct SaleController: RouteCollection {
                 calendario.timeZone = TimeZone(identifier: "UTC")!
                 customer.dateLimit = calendario.date(byAdding: .day, value: customer.creditDays, to: date)!
             }
-            if paymentType == .loan {
+            if saleTransactionDTO.paymentType == .loan {
                 customer.firstDatePurchaseWithCredit = customer.totalDebt == 0 ? date : customer.firstDatePurchaseWithCredit
                 customer.totalDebt = customer.totalDebt + saleTransactionDTO.cart.total
                 if customer.totalDebt > customer.creditLimit && customer.isCreditLimitActive {

@@ -5,6 +5,7 @@ import Vapor
 struct EmployeeController: RouteCollection {
     let syncManager: SyncManager
     let validator: FlorShopAuthValitator
+    let florShopAuthProvider: FlorShopAuthProvider
     func boot(routes: any RoutesBuilder) throws {
         let employees = routes.grouped("employees")
         employees.post(use: self.save)
@@ -19,70 +20,86 @@ struct EmployeeController: RouteCollection {
         let oldGlobalToken: Int64 = await self.syncManager.getLastGlobalToken()
         let oldBranchToken: Int64 = await self.syncManager.getLastBranchToken(subsidiaryCic: payload.subsidiaryCic)
         let responseString: String = try await req.db.transaction { transaction -> String in
-            if let employee = try await Employee.findEmployee(employeeCic: employeeDTO.employeeCic, on: transaction) {
+            guard let subsidiaryEntity = try await Subsidiary.findSubsidiary(subsidiaryCic: payload.subsidiaryCic, on: transaction),
+                  let subsidiaryId = subsidiaryEntity.id else {
+                throw Abort(.badRequest, reason: "La subsidiaria no existe")
+            }
+            if let employeeCic = employeeDTO.employeeCic {//Tiene la intension de actualizar empleado
                 //Update
-                if employee.user != employeeDTO.user {
-                    guard try await !employeeUserNameExist(employeeDTO: employeeDTO, db: transaction) else {
-                        throw Abort(.badRequest, reason: "El nombre de usuario ya existe")
-                    }
-                    employee.user = employeeDTO.user
+                var result = "Don't updated"
+                guard let employee = try await Employee.findEmployee(employeeCic: employeeCic, subsidiaryCic: payload.subsidiaryCic, on: transaction) else {
+                    throw Abort(.badRequest, reason: "El producto no existe para ser actualizado")
                 }
-                if employee.name != employeeDTO.name || employee.lastName != employeeDTO.lastName {
-                    guard try await !employeeFullNameExist(employeeDTO: employeeDTO, db: transaction) else {
-                        throw Abort(.badRequest, reason: "El nombre y apellido del empleado ya existe")
+                if !employeeDTO.isMainEqual(to: employee) {
+                    if employee.name != employeeDTO.name || employee.lastName != employeeDTO.lastName {
+                        guard try await !employeeFullNameExist(employeeDTO: employeeDTO, db: transaction) else {
+                            throw Abort(.badRequest, reason: "El nombre y apellido del empleado ya existe")
+                        }
+                        employee.name = employeeDTO.name
+                        employee.lastName = employeeDTO.lastName
                     }
-                    employee.name = employeeDTO.name
-                    employee.lastName = employeeDTO.lastName
+                    employee.email = employeeDTO.email
+                    employee.phoneNumber = employeeDTO.phoneNumber
+                    employee.imageUrl = employeeDTO.imageUrl
+                    employee.syncToken = await syncManager.nextGlobalToken()
+                    try await employee.update(on: transaction)
+                    result = "Updated"
                 }
-                employee.email = employeeDTO.email
-                employee.phoneNumber = employeeDTO.phoneNumber
-                employee.role = employeeDTO.role
-                employee.active = employeeDTO.active
-                employee.imageUrl = employeeDTO.imageUrl
-                employee.syncToken = await syncManager.nextBranchToken(subsidiaryCic: payload.subsidiaryCic)
-                try await employee.update(on: transaction)
-                return ("Updated")
+                guard let employeeSubsidiary = try await EmployeeSubsidiary.findEmployeeSubsidiary(
+                    employeeCic: employee.employeeCic,
+                    subsisiaryCic: payload.subsidiaryCic,
+                    on: transaction
+                ) else {
+                    throw Abort(.badRequest, reason: "EmployeeSubsidiary no existe")
+                }
+                if !employeeDTO.isChildEqual(to: employeeSubsidiary) {
+                    //TODO: Segregate this in a function
+                    let internalToken = try await TokenService.generateInternalToken(scopedToken: payload, req: req)
+                    let request = UpdateUserSubsidiaryRequest(employeeCic: employee.employeeCic, role: employeeDTO.role, status: employeeDTO.active ? .active : .inactive)
+                    try await self.florShopAuthProvider.updateUserSubsidiary(request: request, internalToken: internalToken)
+                    employeeSubsidiary.role = employeeDTO.role
+                    employeeSubsidiary.active = employeeDTO.active
+                    employeeSubsidiary.syncToken = await syncManager.nextBranchToken(subsidiaryCic: subsidiaryEntity.subsidiaryCic)
+                    try await employeeSubsidiary.update(on: transaction)
+                    result = "Updated"
+                }
+                return result
             } else {
                 //Create
-                guard let subsidiaryId = try await Subsidiary.findSubsidiary(subsidiaryCic: payload.subsidiaryCic, on: transaction)?.id else {
-                    throw Abort(.badRequest, reason: "La subsidiaria no existe")
-                }
-                guard try await !employeeUserNameExist(employeeDTO: employeeDTO, db: transaction) else {
-                    throw Abort(.badRequest, reason: "El nombre de usuario ya existe")
+                guard let companyId = try await Company.findCompany(companyCic: payload.companyCic, on: transaction)?.id else {
+                    throw Abort(.badRequest, reason: "La compañia no existe")
                 }
                 guard try await !employeeFullNameExist(employeeDTO: employeeDTO, db: transaction) else {
                     throw Abort(.badRequest, reason: "El nombre y apellido del empleado ya existe")
                 }
                 let employeeNew = Employee(
-                    employeeCic: UUID().uuidString,
-                    user: employeeDTO.user,
+                    employeeCic: payload.sub.value,
                     name: employeeDTO.name,
                     lastName: employeeDTO.lastName,
                     email: employeeDTO.email,
                     phoneNumber: employeeDTO.phoneNumber,
-                    role: employeeDTO.role,
-                    active: employeeDTO.active,
                     imageUrl: employeeDTO.imageUrl,
-                    syncToken: await syncManager.nextBranchToken(subsidiaryCic: payload.subsidiaryCic),
-                    subsidiaryID: subsidiaryId
+                    syncToken: await syncManager.nextGlobalToken(),
+                    companyID: companyId
                 )
                 try await employeeNew.save(on: transaction)
+                guard let employeeId = employeeNew.id else {
+                    throw Abort(.internalServerError, reason: "Employee id no encontrado")
+                }
+                let newEmployeeSubsidiary = EmployeeSubsidiary(
+                    //TODO: Consultar con FlorShopAuth si los roles estan de acuerdo a su scoped token
+                    role: employeeDTO.role,
+                    active: employeeDTO.active,
+                    syncToken: await syncManager.nextBranchToken(subsidiaryCic: subsidiaryEntity.subsidiaryCic),
+                    subsidiaryID: subsidiaryId,
+                    employeeID: employeeId
+                )
+                try await newEmployeeSubsidiary.save(on: transaction)
                 return ("Created")
             }
         }
         await self.syncManager.sendSyncData(oldGlobalToken: oldGlobalToken, oldBranchToken: oldBranchToken, subsidiaryCic: payload.subsidiaryCic)
         return DefaultResponse(message: responseString)
-    }
-    private func employeeUserNameExist(employeeDTO: EmployeeServerDTO, db: any Database) async throws -> Bool {
-        let userName = employeeDTO.user
-        let query = try await Employee.query(on: db)
-            .filter(\.$user == userName)
-            .first()
-        if query != nil {
-            return true
-        } else {
-            return false
-        }
     }
     private func employeeFullNameExist(employeeDTO: EmployeeServerDTO, db: any Database) async throws -> Bool {
         let name = employeeDTO.name

@@ -20,9 +20,10 @@ struct CustomerContoller: RouteCollection {
         let oldGlobalToken: Int64 = await self.syncManager.getLastGlobalToken()
         let oldBranchToken: Int64 = await self.syncManager.getLastBranchToken(subsidiaryCic: payload.subsidiaryCic)
         let responseString: String = try await req.db.transaction { transaction -> String in
-            if let customer = try await Customer.findCustomer(customerCic: customerDTO.customerCic, on: transaction) {
-                //Update
-                //TODO: Segregate in Equatable function and exist function
+            if let customerCic = customerDTO.customerCic {//tiene la intencion de actualizar
+                guard let customer = try await Customer.findCustomer(customerCic: customerCic, on: transaction) else {
+                    throw Abort(.badRequest, reason: "El cliente no existe para ser actualizado")
+                }
                 if customer.name != customerDTO.name || customer.lastName != customerDTO.lastName {
                     guard try await !customerFullNameExist(customerDTO: customerDTO, db: transaction) else {
                         throw Abort(.badRequest, reason: "El nombre y apellido del cliente ya existe")
@@ -39,7 +40,7 @@ struct CustomerContoller: RouteCollection {
                 customer.syncToken = await syncManager.nextGlobalToken()
                 //TODO: Use calculated variables
                 if customerDTO.isDateLimitActive && customer.totalDebt > 0,
-                    let firstDatePurchaseWithCredit = customer.firstDatePurchaseWithCredit {
+                   let firstDatePurchaseWithCredit = customer.firstDatePurchaseWithCredit {
                     var calendar = Calendar.current
                     calendar.timeZone = TimeZone(identifier: "UTC")!
                     customer.dateLimit = calendar.date(byAdding: .day, value: customer.creditDays, to: firstDatePurchaseWithCredit)!
@@ -85,13 +86,13 @@ struct CustomerContoller: RouteCollection {
         return DefaultResponse(message: responseString)
     }
     @Sendable
-    func payDebt(req: Request) async throws -> PayCustomerDebtResponse {
+    func payDebt(req: Request) async throws -> PayCustomerDebtClientDTO {
         guard let token = req.headers.bearerAuthorization?.token else {
             throw Abort(.unauthorized, reason: "Manda el token mrda")
         }
         let payload = try await validator.verifyToken(token, client: req.client)
-        let payCustomerDebtParameters = try req.content.decode(PayCustomerDebtParameters.self)
-        guard let customer = try await Customer.find(payCustomerDebtParameters.customerId, on: req.db) else {
+        let payCustomerDebtParameters = try req.content.decode(PayCustomerDebtServerDTO.self)
+        guard let customer = try await Customer.findCustomer(customerCic: payload.sub.value, on: req.db) else {
             throw Abort(.badRequest, reason: "El cliente no existe")
         }
         guard payCustomerDebtParameters.amount > 0 else {
@@ -102,12 +103,12 @@ struct CustomerContoller: RouteCollection {
         let remainingMoney = try await req.db.transaction { transaction -> Int in
             var customerTotalDebt = customer.totalDebt
             var remainingMoney = payCustomerDebtParameters.amount
-            let sales = try await getSalesWithDebt(customerId: payCustomerDebtParameters.customerId, db: transaction)
+            let sales = try await getSalesWithDebt(customerCic: payCustomerDebtParameters.customerCic, db: transaction)
             for sale in sales {
                 let subtotal = sale.toSaleDetail.reduce(0) {$0 + ($1.unitPrice * $1.quantitySold)}
                 if remainingMoney >= subtotal && customerTotalDebt >= subtotal  { //Si alcanza para pagar esta deuda y deuda del cliente debe ser mayor a subtotal
                     remainingMoney -= subtotal
-                    sale.paymentType = PaymentType.cash.description
+                    sale.paymentType = PaymentType.cash
                     sale.syncToken = await self.syncManager.nextBranchToken(subsidiaryCic: payload.subsidiaryCic)
                     customerTotalDebt -= subtotal
                     try await sale.update(on: transaction)
@@ -121,16 +122,17 @@ struct CustomerContoller: RouteCollection {
             return remainingMoney
         }
         await self.syncManager.sendSyncData(oldGlobalToken: oldGlobalToken, oldBranchToken: oldBranchToken, subsidiaryCic: payload.subsidiaryCic)
-        return PayCustomerDebtResponse(
-            customerId: payCustomerDebtParameters.customerId,
+        return PayCustomerDebtClientDTO(
+            customerCic: payCustomerDebtParameters.customerCic,
             change: remainingMoney
         )
     }
     //TODO: Optimize this with pagination
-    private func getSalesWithDebt(customerId: UUID, db: any Database) async throws -> [Sale] {
+    private func getSalesWithDebt(customerCic: String, db: any Database) async throws -> [Sale] {
         return try await Sale.query(on: db)
-            .filter(\.$customer.$id == customerId)
-            .filter(\.$paymentType == PaymentType.loan.description)
+            .join(Customer.self, on: \Customer.$id == \Sale.$id)
+            .filter(Customer.self ,\.$customerCic == customerCic)
+            .filter(Sale.self, \.$paymentType == PaymentType.loan)
             .with(\.$toSaleDetail)
             .sort(\.$createdAt, .ascending)
             .all()

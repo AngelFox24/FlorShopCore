@@ -37,8 +37,7 @@ final class Subsidiary: Model, @unchecked Sendable {
 }
 
 extension Subsidiary {
-    static func findSubsidiary(subsidiaryCic: String?, on db: any Database) async throws -> Subsidiary? {
-        guard let subsidiaryCic else { return nil }
+    static func findSubsidiary(subsidiaryCic: String, on db: any Database) async throws -> Subsidiary? {
         return try await Subsidiary.query(on: db)
             .filter(Subsidiary.self, \.$subsidiaryCic == subsidiaryCic)
             .first()

@@ -1,5 +1,6 @@
 import Fluent
 import Vapor
+import FlorShopDTOs
 
 struct SessionController: RouteCollection {
     let syncManager: SyncManager
@@ -9,34 +10,9 @@ struct SessionController: RouteCollection {
 //        session.post("logIn", use: self.logIn)
         session.post("register", use: self.register)
     }
-//    @Sendable
-//    func logIn(req: Request) async throws -> SessionConfig {
-//        let logInParameters = try req.content.decode(LogInParameters.self)
-//        let employee = try await Employee.query(on: req.db)
-//            .filter(\.$user == logInParameters.username)
-//            .with(\.$subsidiary)
-//            .all()
-//            .first
-//        guard let employeeId = employee?.id, let subsidiaryId = employee?.subsidiary.id else {
-//            throw Abort(.badRequest, reason: "Empleado no encontrado")
-//        }
-//        let subsidiary = try await Subsidiary.query(on: req.db)
-//            .filter(\.$id == subsidiaryId)
-//            .with(\.$company)
-//            .all()
-//            .first
-//        guard let companyId = subsidiary?.company.id else {
-//            throw Abort(.badRequest, reason: "Subsidiaria no encontrada")
-//        }
-//        return SessionConfig(
-//            companyId: companyId,
-//            subsidiaryId: subsidiaryId,
-//            employeeId: employeeId
-//        )
-//    }
     //POST: /session/register
     @Sendable
-    func register(req: Request) async throws -> SessionConfig {
+    func register(req: Request) async throws -> DefaultResponse {
         guard let token = req.headers.bearerAuthorization?.token else {
             throw Abort(.unauthorized, reason: "Manda el token mrda")
         }
@@ -47,7 +23,7 @@ struct SessionController: RouteCollection {
         }
         let oldGlobalToken: Int64 = await self.syncManager.getLastGlobalToken()
         let oldBranchToken: Int64 = await self.syncManager.getLastBranchToken(subsidiaryCic: payload.subsidiaryCic)
-        let sessionConfig = try await req.db.transaction { transaction -> SessionConfig in
+        try await req.db.transaction { transaction in
             let companyCic = payload.companyCic
             let subsidiaryCic = payload.subsidiaryCic
             let employeeCic = payload.sub.value
@@ -77,28 +53,28 @@ struct SessionController: RouteCollection {
             //Registramos al empleado
             let newEmployee = Employee(
                 employeeCic: employeeCic,
-                user: registerParameters.employee.user,
                 name: registerParameters.employee.name,
                 lastName: registerParameters.employee.lastName,
                 email: registerParameters.employee.email,
                 phoneNumber: registerParameters.employee.phoneNumber,
-                role: registerParameters.employee.role,
-                active: registerParameters.employee.active,
                 imageUrl: registerParameters.employee.imageUrl,
-                syncToken: await syncManager.nextBranchToken(subsidiaryCic: payload.subsidiaryCic),
-                subsidiaryID: subsidiaryId
+                syncToken: await syncManager.nextGlobalToken(),
+                companyID: companyId
             )
             try await newEmployee.save(on: transaction)
             guard let employeeId = newEmployee.id else {
-                throw Abort(.internalServerError, reason: "employeeId no pudo ser obtenido")
+                throw Abort(.internalServerError, reason: "Employee id no encontrado")
             }
-            return SessionConfig(
-                companyId: companyId,
-                subsidiaryId: subsidiaryId,
-                employeeId: employeeId
+            let newEmployeeSubsidiary = EmployeeSubsidiary(
+                role: registerParameters.employee.role,
+                active: registerParameters.employee.active,
+                syncToken: await syncManager.nextBranchToken(subsidiaryCic: payload.subsidiaryCic),
+                subsidiaryID: subsidiaryId,
+                employeeID: employeeId
             )
+            try await newEmployeeSubsidiary.save(on: transaction)
         }
         await self.syncManager.sendSyncData(oldGlobalToken: oldGlobalToken, oldBranchToken: oldBranchToken, subsidiaryCic: payload.subsidiaryCic)
-        return sessionConfig
+        return DefaultResponse(code: 200, message: "ok")
     }
 }

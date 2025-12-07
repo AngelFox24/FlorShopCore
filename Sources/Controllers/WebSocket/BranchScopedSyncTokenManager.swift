@@ -28,7 +28,7 @@ actor BranchScopedSyncTokenManager {
         let results = try await Subsidiary.query(on: db).all()
         var map: [String: Int64] = [:]
         for branch in results {
-            let max1 = try await Employee.query(on: db)
+            let max1 = try await EmployeeSubsidiary.query(on: db)
                 .filter(\.$subsidiary.$id == branch.id!)
                 .max(\.$syncToken) ?? 0
             let max2 = try await ProductSubsidiary.query(on: db)

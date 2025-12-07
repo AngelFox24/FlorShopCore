@@ -1,5 +1,6 @@
 import Fluent
 import Vapor
+import FlorShopDTOs
 
 struct SyncController: RouteCollection {
     let syncManager: SyncManager
@@ -11,14 +12,14 @@ struct SyncController: RouteCollection {
         subsidiaries.webSocket("ws", onUpgrade: self.handleWebSocket)
     }
     @Sendable
-    func sync(req: Request) async throws -> SyncClientParameters {
+    func sync(req: Request) async throws -> SyncResponse {
         print("Api version 2.0")
         guard let token = req.headers.bearerAuthorization?.token else {
             throw Abort(.unauthorized, reason: "Manda el token mrda")
         }
         let payload = try await validator.verifyToken(token, client: req.client)
-        let request = try req.content.decode(SyncServerParameters.self)
-        let syncOutputParameters: SyncClientParameters = try await req.db.transaction { transaction in
+        let request = try req.content.decode(SyncRequest.self)
+        let syncOutputParameters: SyncResponse = try await req.db.transaction { transaction in
             let clientGlobalToken = request.globalSyncToken
             let clientBranchToken = request.branchSyncToken
             let serverGlobalToken = await self.syncManager.getLastGlobalToken()
@@ -33,22 +34,24 @@ struct SyncController: RouteCollection {
             //MARK: Global Sync
             let syncGlobalFetchParam = GlobalSyncFetchParams(startToken: clientGlobalToken, endToken: globalTokenLimit)
             async let company = fetchGlobalEntities ? self.getChangedCompany(syncFetchParam: syncGlobalFetchParam, db: transaction) : nil
+            async let employees = fetchBranchEntities ? self.getChangedEmployees(syncFetchParam: syncGlobalFetchParam, db: transaction) : []
             async let subsidiaries = fetchGlobalEntities ? self.getChangedSubsidiaries(syncFetchParam: syncGlobalFetchParam, db: transaction) : []
             async let customers = fetchGlobalEntities ? self.getChangedCustomers(syncFetchParam: syncGlobalFetchParam, db: transaction) : []
             async let products = fetchGlobalEntities ? self.getChangedProducts(syncFetchParam: syncGlobalFetchParam, db: transaction) : []
             //MARK: Branch Sync
             let syncBranchFetchParam = BranchSyncFetchParams(startToken: clientBranchToken, endToken: branchTokenLimit, subsidiaryCic: payload.subsidiaryCic)
-            async let employees = fetchBranchEntities ? self.getChangedEmployees(syncFetchParam: syncBranchFetchParam, db: transaction) : []
+            async let employeesSubsidiary = fetchBranchEntities ? self.getChangedEmployeesSubsidiary(syncFetchParam: syncBranchFetchParam, db: transaction) : []
             async let productsSubsidiary = fetchBranchEntities ? self.getChangedProductsSubsidiary(syncFetchParam: syncBranchFetchParam, db: transaction) : []
             async let sales = fetchBranchEntities ? self.getChangedSales(syncFetchParam: syncBranchFetchParam, db: transaction) : []
             async let salesDetail = fetchBranchEntities ? self.getChangedSalesDetail(syncFetchParam: syncBranchFetchParam, db: transaction) : []
 
             // Esperar todos en paralelo
-            return SyncClientParameters(
+            return SyncResponse(
                 company: try await company?.toCompanyDTO(),
                 //Company puede ser nulo, casi siempre no se actualiza
                 subsidiaries: try await subsidiaries.mapToListSubsidiaryDTO(),
                 employees: try await employees.mapToListEmployeeDTO(),
+                employeesSubsidiary: try await employeesSubsidiary.mapToListEmployeeSubsidiaryDTO(),
                 customers: try await customers.mapToListCustomerDTO(),
                 products: try await products.mapToListProductDTO(),
                 productsSubsidiary: try await productsSubsidiary.mapToListProductSubsidiaryDTO(),
@@ -66,6 +69,7 @@ struct SyncController: RouteCollection {
     func handleWebSocket(req: Request, ws: WebSocket) async {
         print("WebSocket version 2.0")
         guard let token = req.headers.bearerAuthorization?.token else {
+            print("WebSocket desconectado porque no tiene token")
             ws.close(promise: nil)
             return
         }
@@ -98,6 +102,14 @@ struct SyncController: RouteCollection {
         try await Subsidiary.query(on: db)
             .filter(Subsidiary.self, \.$syncToken > syncFetchParam.startToken)
             .filter(Subsidiary.self, \.$syncToken <= syncFetchParam.endToken)
+            .with(\.$company)
+            .all()
+    }
+    private func getChangedEmployees(syncFetchParam: GlobalSyncFetchParams, db: any Database) async throws -> [Employee] {
+        try await Employee.query(on: db)
+            .filter(Employee.self, \.$syncToken > syncFetchParam.startToken)
+            .filter(Employee.self, \.$syncToken <= syncFetchParam.endToken)
+            .with(\.$company)
             .all()
     }
     private func getChangedCustomers(syncFetchParam: GlobalSyncFetchParams, db: any Database) async throws -> [Customer] {
@@ -110,15 +122,17 @@ struct SyncController: RouteCollection {
         try await Product.query(on: db)
             .filter(Product.self, \.$syncToken > syncFetchParam.startToken)
             .filter(Product.self, \.$syncToken <= syncFetchParam.endToken)
+            .with(\.$company)
             .all()
     }
     //MARK: Fetch Branch Tables
-    private func getChangedEmployees(syncFetchParam: BranchSyncFetchParams, db: any Database) async throws -> [Employee] {
-        try await Employee.query(on: db)
-            .join(Subsidiary.self, on: \Subsidiary.$id == \Employee.$subsidiary.$id)
+    private func getChangedEmployeesSubsidiary(syncFetchParam: BranchSyncFetchParams, db: any Database) async throws -> [EmployeeSubsidiary] {
+        try await EmployeeSubsidiary.query(on: db)
+            .join(Subsidiary.self, on: \Subsidiary.$id == \EmployeeSubsidiary.$subsidiary.$id)
             .filter(Subsidiary.self, \.$subsidiaryCic == syncFetchParam.subsidiaryCic)
-            .filter(Employee.self, \.$syncToken > syncFetchParam.startToken)
-            .filter(Employee.self, \.$syncToken <= syncFetchParam.endToken)
+            .filter(EmployeeSubsidiary.self, \.$syncToken > syncFetchParam.startToken)
+            .filter(EmployeeSubsidiary.self, \.$syncToken <= syncFetchParam.endToken)
+            .with(\.$subsidiary)
             .all()
     }
     private func getChangedProductsSubsidiary(syncFetchParam: BranchSyncFetchParams, db: any Database) async throws -> [ProductSubsidiary] {
@@ -127,6 +141,8 @@ struct SyncController: RouteCollection {
             .filter(Subsidiary.self, \.$subsidiaryCic == syncFetchParam.subsidiaryCic)
             .filter(ProductSubsidiary.self, \.$syncToken > syncFetchParam.startToken)
             .filter(ProductSubsidiary.self, \.$syncToken <= syncFetchParam.endToken)
+            .with(\.$subsidiary)
+            .with(\.$product)
             .all()
     }
     private func getChangedSales(syncFetchParam: BranchSyncFetchParams, db: any Database) async throws -> [Sale] {
@@ -135,6 +151,7 @@ struct SyncController: RouteCollection {
             .filter(Subsidiary.self, \.$subsidiaryCic == syncFetchParam.subsidiaryCic)
             .filter(Sale.self, \.$syncToken > syncFetchParam.startToken)
             .filter(Sale.self, \.$syncToken <= syncFetchParam.endToken)
+            .with(\.$subsidiary)
             .all()
     }
     private func getChangedSalesDetail(syncFetchParam: BranchSyncFetchParams, db: any Database) async throws -> [SaleDetail] {
@@ -144,6 +161,7 @@ struct SyncController: RouteCollection {
             .filter(Subsidiary.self, \.$subsidiaryCic == syncFetchParam.subsidiaryCic)
             .filter(SaleDetail.self, \.$syncToken > syncFetchParam.startToken)
             .filter(SaleDetail.self, \.$syncToken <= syncFetchParam.endToken)
+            .with(\.$sale)
             .all()
     }
 }

@@ -8,13 +8,10 @@ final class Employee: Model, @unchecked Sendable {
     @ID(key: .id) var id: UUID?
     
     @Field(key: "employee_cic") var employeeCic: String
-    @Field(key: "user") var user: String
     @Field(key: "name") var name: String
-    @Field(key: "lastName") var lastName: String
+    @Field(key: "lastName") var lastName: String?
     @Field(key: "email") var email: String
-    @Field(key: "phoneNumber") var phoneNumber: String
-    @Field(key: "role") var role: UserSubsidiaryRole
-    @Field(key: "active") var active: Bool
+    @Field(key: "phoneNumber") var phoneNumber: String?
     @Field(key: "imageUrl") var imageUrl: String?
     @Field(key: "syncToken") var syncToken: Int64
     
@@ -23,42 +20,38 @@ final class Employee: Model, @unchecked Sendable {
     @Timestamp(key: "updated_at", on: .update) var updatedAt: Date?
     
     //MARK: Relationship
-    @Parent(key: "subsidiary_id") var subsidiary: Subsidiary
+    @Parent(key: "company_id") var company: Company
     @Children(for: \.$employee) var toSale: [Sale]
+    @Children(for: \.$employee) var toEmployeeSubsidiary: [EmployeeSubsidiary]
     
     init() { }
     
     init(
         employeeCic: String,
-        user: String,
         name: String,
-        lastName: String,
+        lastName: String?,
         email: String,
-        phoneNumber: String,
-        role: UserSubsidiaryRole,
-        active: Bool,
+        phoneNumber: String?,
         imageUrl: String?,
         syncToken: Int64,
-        subsidiaryID: Subsidiary.IDValue
+        companyID: Company.IDValue
     ) {
         self.employeeCic = employeeCic
-        self.user = user
         self.name = name
         self.lastName = lastName
         self.email = email
         self.phoneNumber = phoneNumber
-        self.role = role
-        self.active = active
         self.imageUrl = imageUrl
         self.syncToken = syncToken
-        self.$subsidiary.id = subsidiaryID
+        self.$company.id = companyID
     }
 }
 
 extension Employee {
-    static func findEmployee(employeeCic: String?, on db: any Database) async throws -> Employee? {
-        guard let employeeCic else { return nil }
+    static func findEmployee(employeeCic: String, subsidiaryCic: String, on db: any Database) async throws -> Employee? {
         return try await Employee.query(on: db)
+            .join(Subsidiary.self, on: \Subsidiary.$id == \Employee.$id)
+            .filter(Subsidiary.self, \.$subsidiaryCic == subsidiaryCic)
             .filter(Employee.self, \.$employeeCic == employeeCic)
             .first()
     }

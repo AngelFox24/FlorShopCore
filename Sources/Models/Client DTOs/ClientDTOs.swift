@@ -8,4 +8,6 @@ extension CustomerClientDTO: @retroactive Content {}
 extension ProductClientDTO: @retroactive Content {}
 extension SaleClientDTO: @retroactive Content {}
 extension SaleDetailClientDTO: @retroactive Content {}
-
+extension PayCustomerDebtClientDTO: @retroactive Content {}
+extension SyncResponse: @retroactive Content {}
+extension DefaultResponse: @retroactive Content {}
