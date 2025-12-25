@@ -1,5 +1,6 @@
 import Fluent
 import Vapor
+import FlorShopDTOs
 import NIOConcurrencyHelpers  // necesario para NIOLock
 
 actor WebSocketClientManager {
@@ -10,8 +11,16 @@ actor WebSocketClientManager {
     private var clients: [Client] = []
 
     func addClient(ws: WebSocket, subsidiaryCic: String) async throws {
+        try await removeSameClients(subsidiaryCic: subsidiaryCic)
         clients.removeAll { $0.subsidiaryCic == subsidiaryCic }
         clients.append(.init(ws: ws, subsidiaryCic: subsidiaryCic))
+    }
+    
+    func removeSameClients(subsidiaryCic: String) async throws {
+        let clients = self.clients.filter { $0.subsidiaryCic == subsidiaryCic }
+        for client in clients {
+            try await client.ws.close()
+        }
     }
 
     func removeClient(ws: WebSocket, subsidiaryCic: String? = nil) {
@@ -44,14 +53,5 @@ actor WebSocketClientManager {
     private func encodeSyncTokens(_ parameters: SyncTokensDTO) -> String? {
         guard let data = try? JSONEncoder().encode(parameters) else { return nil }
         return String(data: data, encoding: .utf8)
-    }
-}
-
-struct SyncTokensDTO: Codable {
-    let globalToken: Int64?
-    let branchToken: Int64?
-    init(globalToken: Int64?, branchToken: Int64?) {
-        self.globalToken = globalToken
-        self.branchToken = branchToken
     }
 }

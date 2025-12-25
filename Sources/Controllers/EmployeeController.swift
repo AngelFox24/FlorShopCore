@@ -64,8 +64,10 @@ struct EmployeeController: RouteCollection {
                     result = "Updated"
                 }
                 return result
-            } else {
+            } else {///Las creacion de empleado no son creadas por terceros, es mas completar registro, solo un empleados que en su token tienen el cic con ese se crea
                 //Create
+                //TODO: Validar que el email debe ser solo del employee segun FlorShopAuth
+                //TODO: Si manda nulo el employeeCic y ya existe ese employeeCic entonces hay que permitir que lo actualize
                 guard let companyId = try await Company.findCompany(companyCic: payload.companyCic, on: transaction)?.id else {
                     throw Abort(.badRequest, reason: "La compañia no existe")
                 }

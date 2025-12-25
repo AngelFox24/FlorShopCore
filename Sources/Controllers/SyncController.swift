@@ -19,51 +19,50 @@ struct SyncController: RouteCollection {
         }
         let payload = try await validator.verifyToken(token, client: req.client)
         let request = try req.content.decode(SyncRequest.self)
-        let syncOutputParameters: SyncResponse = try await req.db.transaction { transaction in
-            let clientGlobalToken = request.globalSyncToken
-            let clientBranchToken = request.branchSyncToken
-            let serverGlobalToken = await self.syncManager.getLastGlobalToken()
-            let serverBranchToken = await self.syncManager.getLastBranchToken(subsidiaryCic: payload.subsidiaryCic)
-            
-            let fetchGlobalEntities: Bool = clientGlobalToken < serverGlobalToken
-            let fetchBranchEntities: Bool = clientBranchToken < serverBranchToken
-            
-            let globalTokenLimit = min(clientGlobalToken + Int64(syncLimit), serverGlobalToken)
-            let branchTokenLimit = min(clientBranchToken + Int64(syncLimit), serverBranchToken)
-//            print("[SyncController] New Request, startToken: \(clientToken), endToken: \(tokenLimit)")
-            //MARK: Global Sync
-            let syncGlobalFetchParam = GlobalSyncFetchParams(startToken: clientGlobalToken, endToken: globalTokenLimit)
-            async let company = fetchGlobalEntities ? self.getChangedCompany(syncFetchParam: syncGlobalFetchParam, db: transaction) : nil
-            async let employees = fetchBranchEntities ? self.getChangedEmployees(syncFetchParam: syncGlobalFetchParam, db: transaction) : []
-            async let subsidiaries = fetchGlobalEntities ? self.getChangedSubsidiaries(syncFetchParam: syncGlobalFetchParam, db: transaction) : []
-            async let customers = fetchGlobalEntities ? self.getChangedCustomers(syncFetchParam: syncGlobalFetchParam, db: transaction) : []
-            async let products = fetchGlobalEntities ? self.getChangedProducts(syncFetchParam: syncGlobalFetchParam, db: transaction) : []
-            //MARK: Branch Sync
-            let syncBranchFetchParam = BranchSyncFetchParams(startToken: clientBranchToken, endToken: branchTokenLimit, subsidiaryCic: payload.subsidiaryCic)
-            async let employeesSubsidiary = fetchBranchEntities ? self.getChangedEmployeesSubsidiary(syncFetchParam: syncBranchFetchParam, db: transaction) : []
-            async let productsSubsidiary = fetchBranchEntities ? self.getChangedProductsSubsidiary(syncFetchParam: syncBranchFetchParam, db: transaction) : []
-            async let sales = fetchBranchEntities ? self.getChangedSales(syncFetchParam: syncBranchFetchParam, db: transaction) : []
-            async let salesDetail = fetchBranchEntities ? self.getChangedSalesDetail(syncFetchParam: syncBranchFetchParam, db: transaction) : []
-
-            // Esperar todos en paralelo
-            return SyncResponse(
-                company: try await company?.toCompanyDTO(),
-                //Company puede ser nulo, casi siempre no se actualiza
-                subsidiaries: try await subsidiaries.mapToListSubsidiaryDTO(),
-                employees: try await employees.mapToListEmployeeDTO(),
-                employeesSubsidiary: try await employeesSubsidiary.mapToListEmployeeSubsidiaryDTO(),
-                customers: try await customers.mapToListCustomerDTO(),
-                products: try await products.mapToListProductDTO(),
-                productsSubsidiary: try await productsSubsidiary.mapToListProductSubsidiaryDTO(),
-                sales: try await sales.mapToListSaleDTO(),
-                salesDetail: try await salesDetail.mapToListSaleDetailDTO(),
-                lastGlobalToken: globalTokenLimit,
-                isGlobalUpToDate: globalTokenLimit == serverGlobalToken,
-                lastBranchToken: branchTokenLimit,
-                isBranchUpToDate: branchTokenLimit == serverBranchToken
-            )
-        }
-        return syncOutputParameters
+        //        let syncOutputParameters: SyncResponse = try await req.db.transaction { transaction in
+        let clientGlobalToken = request.globalSyncToken
+        let clientBranchToken = request.branchSyncToken
+        let serverGlobalToken = await self.syncManager.getLastGlobalToken()
+        let serverBranchToken = await self.syncManager.getLastBranchToken(subsidiaryCic: payload.subsidiaryCic)
+        
+        let fetchGlobalEntities: Bool = clientGlobalToken < serverGlobalToken
+        let fetchBranchEntities: Bool = clientBranchToken < serverBranchToken
+        
+        let globalTokenLimit = min(clientGlobalToken + Int64(syncLimit), serverGlobalToken)
+        let branchTokenLimit = min(clientBranchToken + Int64(syncLimit), serverBranchToken)
+        //            print("[SyncController] New Request, startToken: \(clientToken), endToken: \(tokenLimit)")
+        //MARK: Global Sync
+        let syncGlobalFetchParam = GlobalSyncFetchParams(startToken: clientGlobalToken, endToken: globalTokenLimit)
+        async let company = fetchGlobalEntities ? self.getChangedCompany(syncFetchParam: syncGlobalFetchParam, db: req.db) : nil
+        async let employees = fetchBranchEntities ? self.getChangedEmployees(syncFetchParam: syncGlobalFetchParam, db: req.db) : []
+        async let subsidiaries = fetchGlobalEntities ? self.getChangedSubsidiaries(syncFetchParam: syncGlobalFetchParam, db: req.db) : []
+        async let customers = fetchGlobalEntities ? self.getChangedCustomers(syncFetchParam: syncGlobalFetchParam, db: req.db) : []
+        async let products = fetchGlobalEntities ? self.getChangedProducts(syncFetchParam: syncGlobalFetchParam, db: req.db) : []
+        //MARK: Branch Sync
+        let syncBranchFetchParam = BranchSyncFetchParams(startToken: clientBranchToken, endToken: branchTokenLimit, subsidiaryCic: payload.subsidiaryCic)
+        async let employeesSubsidiary = fetchBranchEntities ? self.getChangedEmployeesSubsidiary(syncFetchParam: syncBranchFetchParam, db: req.db) : []
+        async let productsSubsidiary = fetchBranchEntities ? self.getChangedProductsSubsidiary(syncFetchParam: syncBranchFetchParam, db: req.db) : []
+        async let sales = fetchBranchEntities ? self.getChangedSales(syncFetchParam: syncBranchFetchParam, db: req.db) : []
+        async let salesDetail = fetchBranchEntities ? self.getChangedSalesDetail(syncFetchParam: syncBranchFetchParam, db: req.db) : []
+        // Esperar todos en paralelo
+        let sync = SyncResponse(
+            company: try await company?.toCompanyDTO(),
+            //Company puede ser nulo, casi siempre no se actualiza
+            subsidiaries: try await subsidiaries.mapToListSubsidiaryDTO(),
+            employees: try await employees.mapToListEmployeeDTO(),
+            employeesSubsidiary: try await employeesSubsidiary.mapToListEmployeeSubsidiaryDTO(),
+            customers: try await customers.mapToListCustomerDTO(),
+            products: try await products.mapToListProductDTO(),
+            productsSubsidiary: try await productsSubsidiary.mapToListProductSubsidiaryDTO(),
+            sales: try await sales.mapToListSaleDTO(),
+            salesDetail: try await salesDetail.mapToListSaleDetailDTO(),
+            lastGlobalToken: globalTokenLimit,
+            isGlobalUpToDate: globalTokenLimit == serverGlobalToken,
+            lastBranchToken: branchTokenLimit,
+            isBranchUpToDate: branchTokenLimit == serverBranchToken
+        )
+        //        }
+        return sync
     }
     @Sendable
     func handleWebSocket(req: Request, ws: WebSocket) async {
@@ -133,6 +132,7 @@ struct SyncController: RouteCollection {
             .filter(EmployeeSubsidiary.self, \.$syncToken > syncFetchParam.startToken)
             .filter(EmployeeSubsidiary.self, \.$syncToken <= syncFetchParam.endToken)
             .with(\.$subsidiary)
+            .with(\.$employee)
             .all()
     }
     private func getChangedProductsSubsidiary(syncFetchParam: BranchSyncFetchParams, db: any Database) async throws -> [ProductSubsidiary] {

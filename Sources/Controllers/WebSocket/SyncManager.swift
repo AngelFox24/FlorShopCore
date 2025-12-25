@@ -1,4 +1,5 @@
 import Vapor
+import FlorShopDTOs
 
 actor SyncManager {
     private let webSocketManager: WebSocketClientManager

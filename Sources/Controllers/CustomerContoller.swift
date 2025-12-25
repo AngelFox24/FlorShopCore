@@ -66,7 +66,7 @@ struct CustomerContoller: RouteCollection {
                     creditScore: 0,
                     creditDays: customerDTO.creditDays,
                     isCreditLimitActive: customerDTO.isCreditLimitActive,
-                    isCreditLimit: false,
+                    isCreditLimit: false,//TODO: Delete this atribute
                     isDateLimitActive: customerDTO.isDateLimitActive,
                     isDateLimit: false,
                     dateLimit: customerDTO.dateLimit,
