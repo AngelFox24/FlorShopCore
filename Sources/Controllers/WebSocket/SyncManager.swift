@@ -17,8 +17,8 @@ actor SyncManager {
     }
     
     // MARK: - WebSocket
-    func addClient(ws: WebSocket, subsidiaryCic: String) async throws {
-        try await webSocketManager.addClient(ws: ws, subsidiaryCic: subsidiaryCic)
+    func addClient(ws: WebSocket, subsidiaryCic: String, employeeCic: String) async throws {
+        try await webSocketManager.addClient(ws: ws, subsidiaryCic: subsidiaryCic, employeeCic: employeeCic)
         
         // Envía ambos tokens al conectar el cliente
         let globalToken = await self.globalManager.tokenValue()
@@ -29,12 +29,12 @@ actor SyncManager {
         )
         await webSocketManager.sendUpdateToClient(ws: ws, syncToken: tokens)
         
-        print("✅ Cliente agregado con tokens global y por sucursal")
+        print("[SyncManager] ✅ Cliente agregado con tokens global y por sucursal con employeeCic: \(employeeCic)")
     }
     
     func removeClient(ws: WebSocket) async {
         await webSocketManager.removeClient(ws: ws)
-        print("❌ Cliente removido")
+        print("[SyncManager] ❌ Cliente removido")
     }
     
     // MARK: - Tokens globales
@@ -57,6 +57,7 @@ actor SyncManager {
     
     // MARK: - Difusión
     func sendSyncData(oldGlobalToken: Int64, oldBranchToken: Int64, subsidiaryCic: String) async {
+        print("[SyncManager] Enviando sincronizacion")
         let globalToken = await self.globalManager.tokenValue()
         let branchToken = await self.branchManager.tokenValue(subsidiaryCic: subsidiaryCic)
         if globalToken != oldGlobalToken {
@@ -64,6 +65,7 @@ actor SyncManager {
                 globalToken: globalToken,
                 branchToken: nil
             )
+            print("[SyncManager] Enviando global broadcast token: \(globalToken)")
             await webSocketManager.globalBroadcast(tokens)
         }
         if branchToken != oldBranchToken {
@@ -71,6 +73,7 @@ actor SyncManager {
                 globalToken: nil,
                 branchToken: branchToken
             )
+            print("[SyncManager] Enviando branch broadcast token: \(branchToken)")
             await webSocketManager.branchBroadcast(subsidiaryCic: subsidiaryCic, syncToken: tokens)
         }
     }

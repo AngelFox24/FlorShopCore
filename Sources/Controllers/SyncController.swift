@@ -66,17 +66,17 @@ struct SyncController: RouteCollection {
     }
     @Sendable
     func handleWebSocket(req: Request, ws: WebSocket) async {
-        print("WebSocket version 2.0")
         guard let token = req.headers.bearerAuthorization?.token else {
-            print("WebSocket desconectado porque no tiene token")
+            print("[SyncController] WebSocket desconectado porque no tiene token")
             ws.close(promise: nil)
             return
         }
         do {
             let payload = try await validator.verifyToken(token, client: req.client)
-            try await syncManager.addClient(ws: ws, subsidiaryCic: payload.subsidiaryCic)
+            try await syncManager.addClient(ws: ws, subsidiaryCic: payload.subsidiaryCic, employeeCic: payload.sub.value)
         } catch {
             // Token no valido → cerrar
+            print("[SyncController] WebSocket desconectado porque el token es invalido")
             ws.close(promise: nil)
             return
         }
@@ -85,6 +85,7 @@ struct SyncController: RouteCollection {
         
         ws.onClose.whenComplete { _ in
             Task {
+                print("[SyncController] WebSocket desconectado por inactividad")
                 await syncManager.removeClient(ws: ws)
             }
         }
