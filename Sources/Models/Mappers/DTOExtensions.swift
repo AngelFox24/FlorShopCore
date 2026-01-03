@@ -33,7 +33,8 @@ extension ProductServerDTO {
         return (
             self.barCode == other.barCode &&
             self.productName == other.productName &&
-            self.unitType == other.unitType
+            self.unitType == other.unitType &&
+            self.imageUrl == other.imageUrl
         )
     }
     func isChildEqual(to other: ProductSubsidiary) -> Bool {
