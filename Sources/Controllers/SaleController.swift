@@ -66,8 +66,12 @@ struct SaleController: RouteCollection {
         guard let subsidiaryId = try await Subsidiary.findSubsidiary(subsidiaryCic: payload.subsidiaryCic, on: req.db)?.id else {
             throw Abort(.badRequest, reason: "La subsidiaria no existe")
         }
-        guard let employeeId = try await Employee.findEmployee(employeeCic: payload.sub.value, subsidiaryCic: payload.subsidiaryCic, on: req.db)?.id else {
-            throw Abort(.badRequest, reason: "El empleado no existe")
+        guard let employeeSubsidiaryId = try await EmployeeSubsidiary.findEmployeeSubsidiary(
+            employeeCic: payload.sub.value,
+            subsisiaryCic: payload.subsidiaryCic,
+            on: req.db
+        )?.id else {
+            throw Abort(.badRequest, reason: "El empleado no existe para esta sucursal.")
         }
         let oldGlobalToken: Int64 = await self.syncManager.getLastGlobalToken()
         let oldBranchToken: Int64 = await self.syncManager.getLastBranchToken(subsidiaryCic: payload.subsidiaryCic)
@@ -76,8 +80,14 @@ struct SaleController: RouteCollection {
             guard let subsidiaryEntity = try await Subsidiary.findSubsidiary(subsidiaryCic: payload.subsidiaryCic, on: transaction) else {
                 throw Abort(.badRequest, reason: "La subsidiaria no existe")
             }
-            guard let customer = try await Customer.findCustomer(customerCic: saleTransactionDTO.customerCic, on: transaction) else {
-                throw Abort(.badRequest, reason: "El cliente no existe")
+            let customerEntity: Customer?
+            if let customerCic = saleTransactionDTO.customerCic {
+                guard let customer = try await Customer.findCustomer(customerCic: customerCic, on: transaction) else {
+                    throw Abort(.badRequest, reason: "El cliente no existe")
+                }
+                customerEntity = customer
+            } else {
+                customerEntity = nil
             }
             let saleId = UUID()
             let saleNew = Sale(
@@ -87,8 +97,8 @@ struct SaleController: RouteCollection {
                 total: saleTransactionDTO.cart.total,
                 syncToken: await syncManager.nextBranchToken(subsidiaryCic: subsidiaryEntity.subsidiaryCic),
                 subsidiaryID: subsidiaryId,
-                employeeID: employeeId,
-                customerID: customer.id
+                employeeSubsidiaryID: employeeSubsidiaryId,
+                customerID: customerEntity?.id
             )
             try await saleNew.save(on: transaction)
             var totalOwn = 0
@@ -114,23 +124,25 @@ struct SaleController: RouteCollection {
                 print("Monto no coincide con el calculo de la BD, calculo real: \(totalOwn) calculo enviado: \(saleTransactionDTO.cart.total)")
                 throw Abort(.badRequest, reason: "Monto no coincide con el calculo de la BD, calculo real: \(totalOwn) calculo enviado: \(saleTransactionDTO.cart.total)")
             }
-            customer.lastDatePurchase = date
-            if customer.totalDebt == 0 {
-                var calendario = Calendar.current
-                calendario.timeZone = TimeZone(identifier: "UTC")!
-                customer.dateLimit = calendario.date(byAdding: .day, value: customer.creditDays, to: date)!
-            }
-            if saleTransactionDTO.paymentType == .loan {
-                customer.firstDatePurchaseWithCredit = customer.totalDebt == 0 ? date : customer.firstDatePurchaseWithCredit
-                customer.totalDebt = customer.totalDebt + saleTransactionDTO.cart.total
-                if customer.totalDebt > customer.creditLimit && customer.isCreditLimitActive {
-                    customer.isCreditLimit = true
-                } else {
-                    customer.isCreditLimit = false
+            if let customer = customerEntity {
+                customer.lastDatePurchase = date
+                if customer.totalDebt == 0 {
+                    var calendario = Calendar.current
+                    calendario.timeZone = TimeZone(identifier: "UTC")!
+                    customer.dateLimit = calendario.date(byAdding: .day, value: customer.creditDays, to: date)!
                 }
+                if saleTransactionDTO.paymentType == .loan {
+                    customer.firstDatePurchaseWithCredit = customer.totalDebt == 0 ? date : customer.firstDatePurchaseWithCredit
+                    customer.totalDebt = customer.totalDebt + saleTransactionDTO.cart.total
+                    if customer.totalDebt > customer.creditLimit && customer.isCreditLimitActive {
+                        customer.isCreditLimit = true
+                    } else {
+                        customer.isCreditLimit = false
+                    }
+                }
+                customer.syncToken = await self.syncManager.nextGlobalToken()
+                try await customer.update(on: transaction)
             }
-            customer.syncToken = await self.syncManager.nextGlobalToken()
-            try await customer.update(on: transaction)
             return ("Venta Exitosa")
         }
         await self.syncManager.sendSyncData(oldGlobalToken: oldGlobalToken, oldBranchToken: oldBranchToken, subsidiaryCic: payload.subsidiaryCic)
@@ -152,6 +164,7 @@ struct SaleController: RouteCollection {
         }
         if productSubsidiaryEntity.quantityStock >= cartDetailDTO.quantity {
             productSubsidiaryEntity.quantityStock -= cartDetailDTO.quantity
+            productSubsidiaryEntity.syncToken = await syncManager.nextBranchToken(subsidiaryCic: subsidiaryCic)
             try await productSubsidiaryEntity.update(on: db)
             return productSubsidiaryEntity
         } else {

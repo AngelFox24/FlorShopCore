@@ -9,6 +9,29 @@ struct EmployeeController: RouteCollection {
     func boot(routes: any RoutesBuilder) throws {
         let employees = routes.grouped("employees")
         employees.post(use: self.save)
+        let isComplete = employees.grouped("isComplete")
+        isComplete.get(use: self.isProfileComplete)
+    }
+    //GET: /employees/isComplete
+    @Sendable
+    func isProfileComplete(req: Request) async throws -> CompleteRegistrationResponse {
+        guard let token = req.headers.bearerAuthorization?.token else {
+            throw Abort(.unauthorized, reason: "Manda el token mrda")
+        }
+        let payload = try await validator.verifyToken(token, client: req.client)
+        let isRegistered: Bool
+        let message: String
+        if let _ = try await EmployeeSubsidiary.findEmployeeSubsidiary(employeeCic: payload.sub.value, subsisiaryCic: payload.subsidiaryCic, on: req.db) {
+            isRegistered = true
+            message = "Employee is already registered"
+        } else {
+            isRegistered = false
+            message = "Employee is not registered"
+        }
+        return CompleteRegistrationResponse(
+            isRegistered: isRegistered,
+            message: message
+        )
     }
     @Sendable
     func save(req: Request) async throws -> DefaultResponse {

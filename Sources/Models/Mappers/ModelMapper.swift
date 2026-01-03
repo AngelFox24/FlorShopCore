@@ -84,7 +84,7 @@ extension Sale {
             syncToken: syncToken,
             subsidiaryCic: self.subsidiary.subsidiaryCic,
             customerCic: self.customer?.customerCic,
-            employeeCic: self.employee.employeeCic,
+            employeeCic: self.employeeSubsidiary.employee.employeeCic,
             saleDetail: self.toSaleDetail.mapToListSaleDetailDTO(),
             createdAt: createdAt!,
             updatedAt: updatedAt!

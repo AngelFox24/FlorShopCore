@@ -18,6 +18,7 @@ final class EmployeeSubsidiary: Model, @unchecked Sendable {
     //MARK: Relationship
     @Parent(key: "subsidiary_id") var subsidiary: Subsidiary
     @Parent(key: "employee_id") var employee: Employee
+    @Children(for: \.$employeeSubsidiary) var toSale: [Sale]
     
     init() { }
     

@@ -19,7 +19,7 @@ final class Sale: Model, @unchecked Sendable {
     
     //MARK: Relationship
     @Parent(key: "subsidiary_id") var subsidiary: Subsidiary
-    @Parent(key: "employee_id") var employee: Employee
+    @Parent(key: "employeeSubsidiary_id") var employeeSubsidiary: EmployeeSubsidiary
     @OptionalParent(key: "customer_id") var customer: Customer?
     
     @Children(for: \.$sale) var toSaleDetail: [SaleDetail]
@@ -33,7 +33,7 @@ final class Sale: Model, @unchecked Sendable {
         total: Int,
         syncToken: Int64,
         subsidiaryID: Subsidiary.IDValue,
-        employeeID: Employee.IDValue,
+        employeeSubsidiaryID: EmployeeSubsidiary.IDValue,
         customerID: Customer.IDValue?
     ) {
         self.id = id
@@ -42,7 +42,7 @@ final class Sale: Model, @unchecked Sendable {
         self.total = total
         self.syncToken = syncToken
         self.$subsidiary.id = subsidiaryID
-        self.$employee.id = employeeID
+        self.$employeeSubsidiary.id = employeeSubsidiaryID
         self.$customer.id = customerID
     }
 }

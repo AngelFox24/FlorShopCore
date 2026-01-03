@@ -21,7 +21,6 @@ final class Employee: Model, @unchecked Sendable {
     
     //MARK: Relationship
     @Parent(key: "company_id") var company: Company
-    @Children(for: \.$employee) var toSale: [Sale]
     @Children(for: \.$employee) var toEmployeeSubsidiary: [EmployeeSubsidiary]
     
     init() { }
@@ -50,7 +49,8 @@ final class Employee: Model, @unchecked Sendable {
 extension Employee {
     static func findEmployee(employeeCic: String, subsidiaryCic: String, on db: any Database) async throws -> Employee? {
         return try await Employee.query(on: db)
-            .join(Subsidiary.self, on: \Subsidiary.$id == \Employee.$id)
+            .join(EmployeeSubsidiary.self, on: \EmployeeSubsidiary.$employee.$id == \Employee.$id)
+            .join(Subsidiary.self, on: \Subsidiary.$id == \EmployeeSubsidiary.$subsidiary.$id)
             .filter(Subsidiary.self, \.$subsidiaryCic == subsidiaryCic)
             .filter(Employee.self, \.$employeeCic == employeeCic)
             .first()

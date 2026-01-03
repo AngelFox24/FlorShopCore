@@ -9,7 +9,7 @@ struct CreateSale: AsyncMigration {
             .field("total", .int, .required)
             .field("syncToken", .int64, .required, .sql(.default(0)))
             .field("subsidiary_id", .uuid, .required, .references(Subsidiary.schema, "id"))
-            .field("employee_id", .uuid, .required, .references(Employee.schema, "id"))
+            .field("employeeSubsidiary_id", .uuid, .required, .references(EmployeeSubsidiary.schema, "id"))
             .field("customer_id", .uuid, .references(Customer.schema, "id"))
             .field("created_at", .datetime)
             .field("updated_at", .datetime)

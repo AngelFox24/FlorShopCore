@@ -11,3 +11,4 @@ extension SaleDetailClientDTO: @retroactive Content {}
 extension PayCustomerDebtClientDTO: @retroactive Content {}
 extension SyncResponse: @retroactive Content {}
 extension DefaultResponse: @retroactive Content {}
+extension CompleteRegistrationResponse: @retroactive Content {}

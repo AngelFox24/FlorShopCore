@@ -34,7 +34,7 @@ struct SyncController: RouteCollection {
         //MARK: Global Sync
         let syncGlobalFetchParam = GlobalSyncFetchParams(startToken: clientGlobalToken, endToken: globalTokenLimit)
         async let company = fetchGlobalEntities ? self.getChangedCompany(syncFetchParam: syncGlobalFetchParam, db: req.db) : nil
-        async let employees = fetchBranchEntities ? self.getChangedEmployees(syncFetchParam: syncGlobalFetchParam, db: req.db) : []
+        async let employees = fetchGlobalEntities ? self.getChangedEmployees(syncFetchParam: syncGlobalFetchParam, db: req.db) : []
         async let subsidiaries = fetchGlobalEntities ? self.getChangedSubsidiaries(syncFetchParam: syncGlobalFetchParam, db: req.db) : []
         async let customers = fetchGlobalEntities ? self.getChangedCustomers(syncFetchParam: syncGlobalFetchParam, db: req.db) : []
         async let products = fetchGlobalEntities ? self.getChangedProducts(syncFetchParam: syncGlobalFetchParam, db: req.db) : []
@@ -43,7 +43,6 @@ struct SyncController: RouteCollection {
         async let employeesSubsidiary = fetchBranchEntities ? self.getChangedEmployeesSubsidiary(syncFetchParam: syncBranchFetchParam, db: req.db) : []
         async let productsSubsidiary = fetchBranchEntities ? self.getChangedProductsSubsidiary(syncFetchParam: syncBranchFetchParam, db: req.db) : []
         async let sales = fetchBranchEntities ? self.getChangedSales(syncFetchParam: syncBranchFetchParam, db: req.db) : []
-        async let salesDetail = fetchBranchEntities ? self.getChangedSalesDetail(syncFetchParam: syncBranchFetchParam, db: req.db) : []
         // Esperar todos en paralelo
         let sync = SyncResponse(
             company: try await company?.toCompanyDTO(),
@@ -55,7 +54,6 @@ struct SyncController: RouteCollection {
             products: try await products.mapToListProductDTO(),
             productsSubsidiary: try await productsSubsidiary.mapToListProductSubsidiaryDTO(),
             sales: try await sales.mapToListSaleDTO(),
-            salesDetail: try await salesDetail.mapToListSaleDetailDTO(),
             lastGlobalToken: globalTokenLimit,
             isGlobalUpToDate: globalTokenLimit == serverGlobalToken,
             lastBranchToken: branchTokenLimit,
@@ -153,16 +151,10 @@ struct SyncController: RouteCollection {
             .filter(Sale.self, \.$syncToken > syncFetchParam.startToken)
             .filter(Sale.self, \.$syncToken <= syncFetchParam.endToken)
             .with(\.$subsidiary)
-            .all()
-    }
-    private func getChangedSalesDetail(syncFetchParam: BranchSyncFetchParams, db: any Database) async throws -> [SaleDetail] {
-        try await SaleDetail.query(on: db)
-            .join(Sale.self, on: \Sale.$id == \SaleDetail.$sale.$id)
-            .join(Subsidiary.self, on: \Subsidiary.$id == \Sale.$subsidiary.$id)
-            .filter(Subsidiary.self, \.$subsidiaryCic == syncFetchParam.subsidiaryCic)
-            .filter(SaleDetail.self, \.$syncToken > syncFetchParam.startToken)
-            .filter(SaleDetail.self, \.$syncToken <= syncFetchParam.endToken)
-            .with(\.$sale)
+            .with(\.$employeeSubsidiary) { employeeSubsidiary in
+                employeeSubsidiary.with(\.$employee)
+            }
+            .with(\.$toSaleDetail)
             .all()
     }
 }
