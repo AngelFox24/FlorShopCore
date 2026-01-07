@@ -14,15 +14,13 @@ extension Application {
               portInt > 0 else {
             fatalError("\(EnvironmentVariables.bataBasePort.rawValue) must be an integer in .env.\(self.environment)")
         }
-        let tls: PostgresConnection.Configuration.TLS = self.environment == .production
-        ? .prefer(try .init(configuration: .clientDefault)) : .disable
         return .postgres(configuration: SQLPostgresConfiguration(
             hostname: hostname,
             port: portInt,
             username: username,
             password: password,
             database: database,
-            tls: tls))
+            tls: .disable))
     }
     func getDatabaseID() -> DatabaseID {
         switch self.environment {

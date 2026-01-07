@@ -9,10 +9,6 @@ enum EnvironmentVariables: String {
     case bataBasePort = "DATABASE_PORT"
     case bataBaseUserName = "DATABASE_USERNAME"
     case bataBasePassword = "DATABASE_PASSWORD"
-    case pgData = "PGDATA"
-    case postgresUser = "POSTGRES_USER"
-    case postgresPassword = "POSTGRES_PASSWORD"
-    case postgresDB = "POSTGRES_DB"
     case jwtHmacInternalKey = "JWT_HMAC_INTERNAL_KEY"
     case authBaseUrl = "AUTH_BASE_URL"
 }

@@ -49,7 +49,7 @@ actor WebSocketClientManager {
     func globalBroadcast(_ syncToken: SyncTokensDTO) {
         guard let encoded = encodeSyncTokens(syncToken) else { return }
         for client in clients {
-            print("[WebSocketClientManager] enviando global token: \(syncToken.globalToken, default: "nil") a employeeCic: \(client.employeeCic)")
+//            print("[WebSocketClientManager] enviando global token: \(syncToken.globalToken, default: "nil") a employeeCic: \(client.employeeCic)")
             client.ws.send(encoded)
         }
     }
@@ -58,7 +58,7 @@ actor WebSocketClientManager {
         guard let encoded = encodeSyncTokens(syncToken) else { return }
         let clients = clients.filter { $0.subsidiaryCic == subsidiaryCic }
         for client in clients {
-            print("[WebSocketClientManager] enviando branch token: \(syncToken.branchToken, default: "nil") a employeeCic: \(client.employeeCic)")
+//            print("[WebSocketClientManager] enviando branch token: \(syncToken.branchToken, default: "nil") a employeeCic: \(client.employeeCic)")
             client.ws.send(encoded)
         }
     }
