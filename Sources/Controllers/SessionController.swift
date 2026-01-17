@@ -3,7 +3,7 @@ import Vapor
 import FlorShopDTOs
 
 struct SessionController: RouteCollection {
-    let syncManager: SyncManager
+//    let syncManager: SyncManager
     let validator: FlorShopAuthValitator
     func boot(routes: any RoutesBuilder) throws {
         let session = routes.grouped("session")
@@ -21,8 +21,8 @@ struct SessionController: RouteCollection {
         guard try await Company.query(on: req.db).first() == nil else {
             throw Abort(.badRequest, reason: "No se puede registrar mas de una empresa")
         }
-        let oldGlobalToken: Int64 = await self.syncManager.getLastGlobalToken()
-        let oldBranchToken: Int64 = await self.syncManager.getLastBranchToken(subsidiaryCic: payload.subsidiaryCic)
+//        let oldGlobalToken: Int64 = await self.syncManager.getLastGlobalToken()
+//        let oldBranchToken: Int64 = await self.syncManager.getLastBranchToken(subsidiaryCic: payload.subsidiaryCic)
         try await req.db.transaction { transaction in
             let companyCic = payload.companyCic
             let subsidiaryCic = payload.subsidiaryCic
@@ -31,8 +31,8 @@ struct SessionController: RouteCollection {
             let newCompany = Company(
                 companyCic: companyCic,
                 companyName: registerParameters.company.companyName,
-                ruc: registerParameters.company.ruc,
-                syncToken: await syncManager.nextGlobalToken()
+                ruc: registerParameters.company.ruc
+//                syncToken: await syncManager.nextGlobalToken()
             )
             try await newCompany.save(on: transaction)
             guard let companyId = newCompany.id else {
@@ -43,7 +43,7 @@ struct SessionController: RouteCollection {
                 subsidiaryCic: subsidiaryCic,
                 name: registerParameters.subsidiary.name,
                 imageUrl: registerParameters.subsidiary.imageUrl,
-                syncToken: await syncManager.nextGlobalToken(),
+//                syncToken: await syncManager.nextGlobalToken(),
                 companyID: companyId
             )
             try await newSubsidiary.save(on: transaction)
@@ -58,7 +58,7 @@ struct SessionController: RouteCollection {
                 email: registerParameters.employee.email,
                 phoneNumber: registerParameters.employee.phoneNumber,
                 imageUrl: registerParameters.employee.imageUrl,
-                syncToken: await syncManager.nextGlobalToken(),
+//                syncToken: await syncManager.nextGlobalToken(),
                 companyID: companyId
             )
             try await newEmployee.save(on: transaction)
@@ -68,13 +68,13 @@ struct SessionController: RouteCollection {
             let newEmployeeSubsidiary = EmployeeSubsidiary(
                 role: registerParameters.employee.role,
                 active: registerParameters.employee.active,
-                syncToken: await syncManager.nextBranchToken(subsidiaryCic: payload.subsidiaryCic),
+//                syncToken: await syncManager.nextBranchToken(subsidiaryCic: payload.subsidiaryCic),
                 subsidiaryID: subsidiaryId,
                 employeeID: employeeId
             )
             try await newEmployeeSubsidiary.save(on: transaction)
         }
-        await self.syncManager.sendSyncData(oldGlobalToken: oldGlobalToken, oldBranchToken: oldBranchToken, subsidiaryCic: payload.subsidiaryCic)
+//        await self.syncManager.sendSyncData(oldGlobalToken: oldGlobalToken, oldBranchToken: oldBranchToken, subsidiaryCic: payload.subsidiaryCic)
         return DefaultResponse(code: 200, message: "ok")
     }
 }

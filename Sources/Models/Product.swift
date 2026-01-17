@@ -13,7 +13,7 @@ final class Product: Model, @unchecked Sendable {
     @Field(key: "productName") var productName: String
     @Field(key: "unitType") var unitType: UnitType
     @Field(key: "imageUrl") var imageUrl: String?
-    @Field(key: "syncToken") var syncToken: Int64
+//    @Field(key: "syncToken") var syncToken: Int64
     
     //MARK: Timestamps
     @Timestamp(key: "created_at", on: .create) var createdAt: Date?
@@ -30,7 +30,7 @@ final class Product: Model, @unchecked Sendable {
         barCode: String,
         productName: String,
         unitType: UnitType,
-        syncToken: Int64,
+//        syncToken: Int64,
         imageUrl: String?,
         companyID: Company.IDValue
     ) {
@@ -39,7 +39,7 @@ final class Product: Model, @unchecked Sendable {
         self.productName = productName
         self.unitType = unitType
         self.imageUrl = imageUrl
-        self.syncToken = syncToken
+//        self.syncToken = syncToken
         self.$company.id = companyID
     }
 }

@@ -3,7 +3,7 @@ import FlorShopDTOs
 import Vapor
 
 struct ProductController: RouteCollection {
-    let syncManager: SyncManager
+//    let syncManager: SyncManager
     let validator: FlorShopAuthValitator
     func boot(routes: any RoutesBuilder) throws {
         let products = routes.grouped("products")
@@ -20,8 +20,8 @@ struct ProductController: RouteCollection {
         guard productDTO.productName != "" else {
             throw Abort(.badRequest, reason: "El nombre del producto no puede ser vacio")
         }
-        let oldGlobalToken: Int64 = await self.syncManager.getLastGlobalToken()
-        let oldBranchToken: Int64 = await self.syncManager.getLastBranchToken(subsidiaryCic: payload.subsidiaryCic)
+//        let oldGlobalToken: Int64 = await self.syncManager.getLastGlobalToken()
+//        let oldBranchToken: Int64 = await self.syncManager.getLastBranchToken(subsidiaryCic: payload.subsidiaryCic)
         let responseString: String = try await req.db.transaction { transaction -> String in
             guard let subsidiaryEntity = try await Subsidiary.findSubsidiary(subsidiaryCic: payload.subsidiaryCic, on: transaction),
                   let subsidiaryId = subsidiaryEntity.id else {
@@ -48,7 +48,7 @@ struct ProductController: RouteCollection {
                     }
                     product.unitType = productDTO.unitType
                     product.imageUrl = productDTO.imageUrl
-                    product.syncToken = await syncManager.nextGlobalToken()
+//                    product.syncToken = await syncManager.nextGlobalToken()
                     try await product.update(on: transaction)
                     result = "Updated"
                 }
@@ -65,7 +65,7 @@ struct ProductController: RouteCollection {
                     productSubsidiary.quantityStock = productDTO.quantityStock
                     productSubsidiary.unitCost = productDTO.unitCost
                     productSubsidiary.unitPrice = productDTO.unitPrice
-                    productSubsidiary.syncToken = await syncManager.nextBranchToken(subsidiaryCic: subsidiaryEntity.subsidiaryCic)
+//                    productSubsidiary.syncToken = await syncManager.nextBranchToken(subsidiaryCic: subsidiaryEntity.subsidiaryCic)
                     try await productSubsidiary.update(on: transaction)
                     result = "Updated"
                 }
@@ -86,7 +86,7 @@ struct ProductController: RouteCollection {
                     barCode: productDTO.barCode,
                     productName: productDTO.productName,
                     unitType: productDTO.unitType,
-                    syncToken: await syncManager.nextGlobalToken(),
+//                    syncToken: await syncManager.nextGlobalToken(),
                     imageUrl: productDTO.imageUrl,
                     companyID: companyId
                 )
@@ -100,7 +100,7 @@ struct ProductController: RouteCollection {
                     quantityStock: productDTO.quantityStock,
                     unitCost: productDTO.unitCost,
                     unitPrice: productDTO.unitPrice,
-                    syncToken: await syncManager.nextBranchToken(subsidiaryCic: subsidiaryEntity.subsidiaryCic),
+//                    syncToken: await syncManager.nextBranchToken(subsidiaryCic: subsidiaryEntity.subsidiaryCic),
                     productID: productId,
                     subsidiaryID: subsidiaryId
                 )
@@ -108,7 +108,7 @@ struct ProductController: RouteCollection {
                 return ("Created")
             }
         }
-        await self.syncManager.sendSyncData(oldGlobalToken: oldGlobalToken, oldBranchToken: oldBranchToken, subsidiaryCic: payload.subsidiaryCic)
+//        await self.syncManager.sendSyncData(oldGlobalToken: oldGlobalToken, oldBranchToken: oldBranchToken, subsidiaryCic: payload.subsidiaryCic)
         return DefaultResponse(message: responseString)
     }
     private func productNameExist(productDTO: ProductServerDTO, db: any Database) async throws -> Bool {

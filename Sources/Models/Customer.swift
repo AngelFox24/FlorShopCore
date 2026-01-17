@@ -24,7 +24,7 @@ final class Customer: Model, @unchecked Sendable {
     @Field(key: "phoneNumber") var phoneNumber: String?
     @Field(key: "creditLimit") var creditLimit: Int
     @Field(key: "imageUrl") var imageUrl: String?
-    @Field(key: "syncToken") var syncToken: Int64
+//    @Field(key: "syncToken") var syncToken: Int64
     
     //MARK: Timestamps
     @Timestamp(key: "created_at", on: .create) var createdAt: Date?
@@ -54,7 +54,7 @@ final class Customer: Model, @unchecked Sendable {
         phoneNumber: String?,
         creditLimit: Int,
         imageUrl: String?,
-        syncToken: Int64,
+//        syncToken: Int64,
         companyID: Company.IDValue
     ) {
         self.customerCic = customerCic
@@ -72,7 +72,7 @@ final class Customer: Model, @unchecked Sendable {
         self.lastDatePurchase = lastDatePurchase
         self.phoneNumber = phoneNumber
         self.creditLimit = creditLimit
-        self.syncToken = syncToken
+//        self.syncToken = syncToken
         self.imageUrl = imageUrl
         self.$company.id = companyID
     }

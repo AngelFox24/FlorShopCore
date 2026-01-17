@@ -23,27 +23,27 @@ actor BranchScopedSyncTokenManager {
         return tokens
     }
 
-    static func makeManager(db: any Database) async throws -> BranchScopedSyncTokenManager {
-        // Consultamos el máximo token por sucursal
-        let results = try await Subsidiary.query(on: db).all()
-        var map: [String: Int64] = [:]
-        for branch in results {
-            let max1 = try await EmployeeSubsidiary.query(on: db)
-                .filter(\.$subsidiary.$id == branch.id!)
-                .max(\.$syncToken) ?? 0
-            let max2 = try await ProductSubsidiary.query(on: db)
-                .filter(\.$subsidiary.$id == branch.id!)
-                .max(\.$syncToken) ?? 0
-            let max3 = try await Sale.query(on: db)
-                .filter(\.$subsidiary.$id == branch.id!)
-                .max(\.$syncToken) ?? 0
-            let max4 = try await SaleDetail.query(on: db)
-                .join(Sale.self, on: \Sale.$id == \SaleDetail.$id)
-                .filter(Sale.self, \.$subsidiary.$id == branch.id!)
-                .max(\.$syncToken) ?? 0
-
-            map[branch.subsidiaryCic] = max(max1, max2, max3, max4)
-        }
-        return BranchScopedSyncTokenManager(initialValues: map)
-    }
+//    static func makeManager(db: any Database) async throws -> BranchScopedSyncTokenManager {
+//        // Consultamos el máximo token por sucursal
+//        let results = try await Subsidiary.query(on: db).all()
+//        var map: [String: Int64] = [:]
+//        for branch in results {
+//            let max1 = try await EmployeeSubsidiary.query(on: db)
+//                .filter(\.$subsidiary.$id == branch.id!)
+//                .max(\.$syncToken) ?? 0
+//            let max2 = try await ProductSubsidiary.query(on: db)
+//                .filter(\.$subsidiary.$id == branch.id!)
+//                .max(\.$syncToken) ?? 0
+//            let max3 = try await Sale.query(on: db)
+//                .filter(\.$subsidiary.$id == branch.id!)
+//                .max(\.$syncToken) ?? 0
+//            let max4 = try await SaleDetail.query(on: db)
+//                .join(Sale.self, on: \Sale.$id == \SaleDetail.$id)
+//                .filter(Sale.self, \.$subsidiary.$id == branch.id!)
+//                .max(\.$syncToken) ?? 0
+//
+//            map[branch.subsidiaryCic] = max(max1, max2, max3, max4)
+//        }
+//        return BranchScopedSyncTokenManager(initialValues: map)
+//    }
 }

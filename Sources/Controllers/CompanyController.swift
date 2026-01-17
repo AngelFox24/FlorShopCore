@@ -3,7 +3,7 @@ import FlorShopDTOs
 import Vapor
 
 struct CompanyController: RouteCollection {
-    let syncManager: SyncManager
+//    let syncManager: SyncManager
     let validator: FlorShopAuthValitator
     let florShopAuthProvider: FlorShopAuthProvider
     func boot(routes: any RoutesBuilder) throws {
@@ -25,8 +25,8 @@ struct CompanyController: RouteCollection {
         try companyDTO.validate()
         let responseText: String
         
-        let oldGlobalToken: Int64 = await self.syncManager.getLastGlobalToken()
-        let oldBranchToken: Int64 = await self.syncManager.getLastBranchToken(subsidiaryCic: payload.subsidiaryCic)
+//        let oldGlobalToken: Int64 = await self.syncManager.getLastGlobalToken()
+//        let oldBranchToken: Int64 = await self.syncManager.getLastBranchToken(subsidiaryCic: payload.subsidiaryCic)
         if let company = try await Company.findCompany(companyCic: payload.companyCic, on: req.db) {
             guard !companyDTO.isEqual(to: company) else {
                 return DefaultResponse(message: "Not Updated, is equal")
@@ -36,13 +36,13 @@ struct CompanyController: RouteCollection {
             try await self.florShopAuthProvider.updateCompany(request: companyDTO, internalToken: internalToken)
             company.companyName = companyDTO.companyName
             company.ruc = companyDTO.ruc
-            company.syncToken = await syncManager.nextGlobalToken()
+//            company.syncToken = await syncManager.nextGlobalToken()
             try await company.update(on: req.db)
             responseText = "Updated"
         } else {
             responseText = "Only one company per server"
         }
-        await self.syncManager.sendSyncData(oldGlobalToken: oldGlobalToken, oldBranchToken: oldBranchToken, subsidiaryCic: payload.subsidiaryCic)
+//        await self.syncManager.sendSyncData(oldGlobalToken: oldGlobalToken, oldBranchToken: oldBranchToken, subsidiaryCic: payload.subsidiaryCic)
         return DefaultResponse(message: responseText)
     }
 }

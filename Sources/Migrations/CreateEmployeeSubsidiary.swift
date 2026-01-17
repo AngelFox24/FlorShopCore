@@ -6,7 +6,7 @@ struct CreateEmployeeSubsidiary: AsyncMigration {
             .id()
             .field("role", .string, .required)
             .field("active", .bool, .required)
-            .field("syncToken", .int64, .required, .sql(.default(0)))
+//            .field("syncToken", .int64, .required, .sql(.default(0)))
             .field("subsidiary_id", .uuid, .required, .references(Subsidiary.schema, "id"))
             .field("employee_id", .uuid, .required, .references(Employee.schema, "id"))
             .field("created_at", .datetime)

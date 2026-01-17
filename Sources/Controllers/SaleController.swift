@@ -45,7 +45,7 @@ extension SaleDetailError: AbortError {
 }
 
 struct SaleController: RouteCollection {
-    let syncManager: SyncManager
+//    let syncManager: SyncManager
     let validator: FlorShopAuthValitator
     func boot(routes: any RoutesBuilder) throws {
         let sales = routes.grouped("sales")
@@ -73,8 +73,8 @@ struct SaleController: RouteCollection {
         )?.id else {
             throw Abort(.badRequest, reason: "El empleado no existe para esta sucursal.")
         }
-        let oldGlobalToken: Int64 = await self.syncManager.getLastGlobalToken()
-        let oldBranchToken: Int64 = await self.syncManager.getLastBranchToken(subsidiaryCic: payload.subsidiaryCic)
+//        let oldGlobalToken: Int64 = await self.syncManager.getLastGlobalToken()
+//        let oldBranchToken: Int64 = await self.syncManager.getLastBranchToken(subsidiaryCic: payload.subsidiaryCic)
         //Agregamos detalles a la venta
         let responseString = try await req.db.transaction { transaction -> String in
             guard let subsidiaryEntity = try await Subsidiary.findSubsidiary(subsidiaryCic: payload.subsidiaryCic, on: transaction) else {
@@ -95,7 +95,7 @@ struct SaleController: RouteCollection {
                 paymentType: saleTransactionDTO.paymentType,
                 saleDate: date,
                 total: saleTransactionDTO.cart.total,
-                syncToken: await syncManager.nextBranchToken(subsidiaryCic: subsidiaryEntity.subsidiaryCic),
+//                syncToken: await syncManager.nextBranchToken(subsidiaryCic: subsidiaryEntity.subsidiaryCic),
                 subsidiaryID: subsidiaryId,
                 employeeSubsidiaryID: employeeSubsidiaryId,
                 customerID: customerEntity?.id
@@ -113,7 +113,7 @@ struct SaleController: RouteCollection {
                     unitType: productSubsidiary.product.unitType,
                     unitCost: productSubsidiary.unitCost,
                     unitPrice: productSubsidiary.unitPrice,
-                    syncToken: await syncManager.nextBranchToken(subsidiaryCic: subsidiaryEntity.subsidiaryCic),
+//                    syncToken: await syncManager.nextBranchToken(subsidiaryCic: subsidiaryEntity.subsidiaryCic),
                     imageUrl: productSubsidiary.product.imageUrl,
                     saleID: saleId
                 )
@@ -140,12 +140,12 @@ struct SaleController: RouteCollection {
                         customer.isCreditLimit = false
                     }
                 }
-                customer.syncToken = await self.syncManager.nextGlobalToken()
+//                customer.syncToken = await self.syncManager.nextGlobalToken()
                 try await customer.update(on: transaction)
             }
             return ("Venta Exitosa")
         }
-        await self.syncManager.sendSyncData(oldGlobalToken: oldGlobalToken, oldBranchToken: oldBranchToken, subsidiaryCic: payload.subsidiaryCic)
+//        await self.syncManager.sendSyncData(oldGlobalToken: oldGlobalToken, oldBranchToken: oldBranchToken, subsidiaryCic: payload.subsidiaryCic)
         return DefaultResponse(message: responseString)
     }
 //    private func correctAmount(saleTransactionDTO: SaleTransactionDTO, db: any Database) async throws -> Bool {
@@ -164,7 +164,7 @@ struct SaleController: RouteCollection {
         }
         if productSubsidiaryEntity.quantityStock >= cartDetailDTO.quantity {
             productSubsidiaryEntity.quantityStock -= cartDetailDTO.quantity
-            productSubsidiaryEntity.syncToken = await syncManager.nextBranchToken(subsidiaryCic: subsidiaryCic)
+//            productSubsidiaryEntity.syncToken = await syncManager.nextBranchToken(subsidiaryCic: subsidiaryCic)
             try await productSubsidiaryEntity.update(on: db)
             return productSubsidiaryEntity
         } else {

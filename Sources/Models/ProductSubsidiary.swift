@@ -12,7 +12,7 @@ final class ProductSubsidiary: Model, @unchecked Sendable {
     @Field(key: "quantityStock") var quantityStock: Int
     @Field(key: "unitCost") var unitCost: Int
     @Field(key: "unitPrice") var unitPrice: Int
-    @Field(key: "syncToken") var syncToken: Int64
+//    @Field(key: "syncToken") var syncToken: Int64
     
     //MARK: Timestamps
     @Timestamp(key: "created_at", on: .create) var createdAt: Date?
@@ -30,7 +30,7 @@ final class ProductSubsidiary: Model, @unchecked Sendable {
         quantityStock: Int,
         unitCost: Int,
         unitPrice: Int,
-        syncToken: Int64,
+//        syncToken: Int64,
         productID: Product.IDValue,
         subsidiaryID: Subsidiary.IDValue
     ) {
@@ -39,7 +39,7 @@ final class ProductSubsidiary: Model, @unchecked Sendable {
         self.quantityStock = quantityStock
         self.unitCost = unitCost
         self.unitPrice = unitPrice
-        self.syncToken = syncToken
+//        self.syncToken = syncToken
         self.$product.id = productID
         self.$subsidiary.id = subsidiaryID
     }

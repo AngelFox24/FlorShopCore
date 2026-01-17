@@ -3,7 +3,7 @@ import FlorShopDTOs
 import Vapor
 
 struct SubsidiaryController: RouteCollection {
-    let syncManager: SyncManager
+//    let syncManager: SyncManager
     let validator: FlorShopAuthValitator
     let florShopAuthProvider: FlorShopAuthProvider
     func boot(routes: any RoutesBuilder) throws {
@@ -18,8 +18,8 @@ struct SubsidiaryController: RouteCollection {
         let payload = try await validator.verifyToken(token, client: req.client)
         let subsidiaryDTO = try req.content.decode(SubsidiaryServerDTO.self).clean()
         try self.validateInput(dto: subsidiaryDTO)
-        let oldGlobalToken: Int64 = await self.syncManager.getLastGlobalToken()
-        let oldBranchToken: Int64 = await self.syncManager.getLastBranchToken(subsidiaryCic: payload.subsidiaryCic)
+//        let oldGlobalToken: Int64 = await self.syncManager.getLastGlobalToken()
+//        let oldBranchToken: Int64 = await self.syncManager.getLastBranchToken(subsidiaryCic: payload.subsidiaryCic)
         let responseString: String = try await req.db.transaction { transaction -> String in
             let role: UserSubsidiaryRole
             if let subsidiaryCic = subsidiaryDTO.subsidiaryCic {
@@ -49,7 +49,7 @@ struct SubsidiaryController: RouteCollection {
                 try await self.florShopAuthProvider.saveSubsidiary(request: request, internalToken: internalToken)
                 subsidiary.name = subsidiaryDTO.name
                 subsidiary.imageUrl = subsidiaryDTO.imageUrl
-                subsidiary.syncToken = await self.syncManager.nextGlobalToken()
+//                subsidiary.syncToken = await self.syncManager.nextGlobalToken()
                 try await subsidiary.update(on: transaction)
                 return ("Updated")
             } else {//CREATE
@@ -74,14 +74,14 @@ struct SubsidiaryController: RouteCollection {
                     subsidiaryCic: UUID().uuidString,
                     name: subsidiaryDTO.name,
                     imageUrl: subsidiaryDTO.imageUrl,
-                    syncToken: await syncManager.nextGlobalToken(),
+//                    syncToken: await syncManager.nextGlobalToken(),
                     companyID: companyId
                 )
                 try await subsidiaryNew.save(on: transaction)
                 return ("Created")
             }
         }
-        await self.syncManager.sendSyncData(oldGlobalToken: oldGlobalToken, oldBranchToken: oldBranchToken, subsidiaryCic: payload.subsidiaryCic)
+//        await self.syncManager.sendSyncData(oldGlobalToken: oldGlobalToken, oldBranchToken: oldBranchToken, subsidiaryCic: payload.subsidiaryCic)
         return DefaultResponse(message: responseString)
     }
     private func validateInput(dto: SubsidiaryServerDTO) throws {
@@ -95,20 +95,4 @@ struct SubsidiaryController: RouteCollection {
             .limit(1)
             .first()
     }
-//    private func subsidiaryNameExist(subsidiaryDTO: SubsidiaryServerDTO, db: any Database) async throws -> Bool {
-//        let query = try await Subsidiary.query(on: db)
-//            .group(.and) { and in
-//                and.filter(\.$name == subsidiaryDTO.name)
-//                if let subsidiaryId = subsidiaryDTO.id {
-//                    and.filter(\.$id != subsidiaryId)
-//                }
-//            }
-//            .limit(1)
-//            .first()
-//        if query != nil {
-//            return true
-//        } else {
-//            return false
-//        }
-//    }
 }

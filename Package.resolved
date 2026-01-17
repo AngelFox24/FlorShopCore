@@ -1,5 +1,5 @@
 {
-  "originHash" : "1c81160fdd17e767cbb9efb965b6593a534a64ce77f1e0dc9bcb7d3788abe26e",
+  "originHash" : "db6422b645770d673db817f512490f0ee7fd4450804c083cfa8a084196be53e1",
   "pins" : [
     {
       "identity" : "async-http-client",
@@ -33,8 +33,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/AngelFox24/florshop-dtos",
       "state" : {
-        "revision" : "18f747a58afbc936d13190e2b8c08762dfd83c33",
-        "version" : "1.0.17"
+        "revision" : "ac1fd0ea44948087194993974a884a119ed143f4",
+        "version" : "1.0.18"
       }
     },
     {

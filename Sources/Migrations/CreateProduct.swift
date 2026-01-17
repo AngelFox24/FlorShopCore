@@ -9,7 +9,7 @@ struct CreateProduct: AsyncMigration {
             .field("productName", .string, .required)
             .field("unitType", .string, .required)
             .field("imageUrl", .string)
-            .field("syncToken", .int64, .required, .sql(.default(0)))
+//            .field("syncToken", .int64, .required, .sql(.default(0)))
             .field("company_id", .uuid, .required, .references(Company.schema, "id"))
             .field("created_at", .datetime)
             .field("updated_at", .datetime)

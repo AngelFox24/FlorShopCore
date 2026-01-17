@@ -24,7 +24,7 @@ struct ScopedTokenPayload: JWTPayload {
         self.subsidiaryCic = subsidiaryCic
         self.isOwner = isOwner
         self.type = "scoped"
-        self.iss = .init(value: "FlorShopAuth")
+        self.iss = .init(value: "https://auth.mrangel.dev")
         self.iat = .init(value: issuedAt)
         self.exp = .init(value: expiration)
     }

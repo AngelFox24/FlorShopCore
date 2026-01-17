@@ -16,7 +16,7 @@ final class SaleDetail: Model, @unchecked Sendable {
     @Field(key: "unitCost") var unitCost: Int
     @Field(key: "unitPrice") var unitPrice: Int
     @Field(key: "imageUrl") var imageUrl: String?
-    @Field(key: "syncToken") var syncToken: Int64
+//    @Field(key: "syncToken") var syncToken: Int64
     
     //MARK: Timestamps
     @Timestamp(key: "created_at", on: .create) var createdAt: Date?
@@ -36,7 +36,7 @@ final class SaleDetail: Model, @unchecked Sendable {
         unitType: UnitType,
         unitCost: Int,
         unitPrice: Int,
-        syncToken: Int64,
+//        syncToken: Int64,
         imageUrl: String?,
         saleID: Sale.IDValue
     ) {
@@ -49,7 +49,7 @@ final class SaleDetail: Model, @unchecked Sendable {
         self.unitCost = unitCost
         self.unitPrice = unitPrice
         self.imageUrl = imageUrl
-        self.syncToken = syncToken
+//        self.syncToken = syncToken
         self.$sale.id = saleID
     }
 }

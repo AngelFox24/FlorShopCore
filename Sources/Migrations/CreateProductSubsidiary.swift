@@ -9,7 +9,7 @@ struct CreateProductSubsidiary: AsyncMigration {
             .field("quantityStock", .int, .required)
             .field("unitCost", .int, .required)
             .field("unitPrice", .int, .required)
-            .field("syncToken", .int64, .required, .sql(.default(0)))
+//            .field("syncToken", .int64, .required, .sql(.default(0)))
             .field("product_id", .uuid, .required, .references(Product.schema, "id"))
             .field("subsidiary_id", .uuid, .required, .references(Subsidiary.schema, "id"))
             .field("created_at", .datetime)
