@@ -3,13 +3,13 @@ import Foundation
 import FlorShopDTOs
 
 final class EmployeeSubsidiary: Model, @unchecked Sendable {
-    static let schema = "employeesSubsidiaries"
+    static let schema = "employees_subsidiaries"
     
     @ID(key: .id) var id: UUID?
     
     @Field(key: "role") var role: UserSubsidiaryRole
     @Field(key: "active") var active: Bool
-//    @Field(key: "syncToken") var syncToken: Int64
+    @Field(key: "subsidiary_cic") var subsidiaryCic: String
     
     //MARK: Timestamps
     @Timestamp(key: "created_at", on: .create) var createdAt: Date?
@@ -25,13 +25,13 @@ final class EmployeeSubsidiary: Model, @unchecked Sendable {
     init(
         role: UserSubsidiaryRole,
         active: Bool,
-//        syncToken: Int64,
+        subsidiaryCic: String,
         subsidiaryID: Subsidiary.IDValue,
         employeeID: Employee.IDValue
     ) {
         self.role = role
         self.active = active
-//        self.syncToken = syncToken
+        self.subsidiaryCic = subsidiaryCic
         self.$subsidiary.id = subsidiaryID
         self.$employee.id = employeeID
     }

@@ -3,7 +3,6 @@ import FlorShopDTOs
 import Vapor
 
 struct EmployeeController: RouteCollection {
-//    let syncManager: SyncManager
     let validator: FlorShopAuthValitator
     let florShopAuthProvider: FlorShopAuthProvider
     func boot(routes: any RoutesBuilder) throws {
@@ -40,8 +39,6 @@ struct EmployeeController: RouteCollection {
         }
         let payload = try await validator.verifyToken(token, client: req.client)
         let employeeDTO = try req.content.decode(EmployeeServerDTO.self)
-//        let oldGlobalToken: Int64 = await self.syncManager.getLastGlobalToken()
-//        let oldBranchToken: Int64 = await self.syncManager.getLastBranchToken(subsidiaryCic: payload.subsidiaryCic)
         let responseString: String = try await req.db.transaction { transaction -> String in
             guard let subsidiaryEntity = try await Subsidiary.findSubsidiary(subsidiaryCic: payload.subsidiaryCic, on: transaction),
                   let subsidiaryId = subsidiaryEntity.id else {
@@ -64,7 +61,6 @@ struct EmployeeController: RouteCollection {
                     employee.email = employeeDTO.email
                     employee.phoneNumber = employeeDTO.phoneNumber
                     employee.imageUrl = employeeDTO.imageUrl
-//                    employee.syncToken = await syncManager.nextGlobalToken()
                     try await employee.update(on: transaction)
                     result = "Updated"
                 }
@@ -82,7 +78,6 @@ struct EmployeeController: RouteCollection {
                     try await self.florShopAuthProvider.updateUserSubsidiary(request: request, internalToken: internalToken)
                     employeeSubsidiary.role = employeeDTO.role
                     employeeSubsidiary.active = employeeDTO.active
-//                    employeeSubsidiary.syncToken = await syncManager.nextBranchToken(subsidiaryCic: subsidiaryEntity.subsidiaryCic)
                     try await employeeSubsidiary.update(on: transaction)
                     result = "Updated"
                 }
@@ -91,7 +86,8 @@ struct EmployeeController: RouteCollection {
                 //Create
                 //TODO: Validar que el email debe ser solo del employee segun FlorShopAuth
                 //TODO: Si manda nulo el employeeCic y ya existe ese employeeCic entonces hay que permitir que lo actualize
-                guard let companyId = try await Company.findCompany(companyCic: payload.companyCic, on: transaction)?.id else {
+                guard let companyEntity = try await Company.findCompany(companyCic: payload.companyCic, on: transaction),
+                      let companyEntityId = companyEntity.id else {
                     throw Abort(.badRequest, reason: "La compañia no existe")
                 }
                 guard try await !employeeFullNameExist(employeeDTO: employeeDTO, db: transaction) else {
@@ -104,8 +100,8 @@ struct EmployeeController: RouteCollection {
                     email: employeeDTO.email,
                     phoneNumber: employeeDTO.phoneNumber,
                     imageUrl: employeeDTO.imageUrl,
-//                    syncToken: await syncManager.nextGlobalToken(),
-                    companyID: companyId
+                    companyCic: companyEntity.companyCic,
+                    companyID: companyEntityId
                 )
                 try await employeeNew.save(on: transaction)
                 guard let employeeId = employeeNew.id else {
@@ -115,7 +111,7 @@ struct EmployeeController: RouteCollection {
                     //TODO: Consultar con FlorShopAuth si los roles estan de acuerdo a su scoped token
                     role: employeeDTO.role,
                     active: employeeDTO.active,
-//                    syncToken: await syncManager.nextBranchToken(subsidiaryCic: subsidiaryEntity.subsidiaryCic),
+                    subsidiaryCic: subsidiaryEntity.subsidiaryCic,
                     subsidiaryID: subsidiaryId,
                     employeeID: employeeId
                 )
@@ -123,7 +119,6 @@ struct EmployeeController: RouteCollection {
                 return ("Created")
             }
         }
-//        await self.syncManager.sendSyncData(oldGlobalToken: oldGlobalToken, oldBranchToken: oldBranchToken, subsidiaryCic: payload.subsidiaryCic)
         return DefaultResponse(message: responseString)
     }
     private func employeeFullNameExist(employeeDTO: EmployeeServerDTO, db: any Database) async throws -> Bool {

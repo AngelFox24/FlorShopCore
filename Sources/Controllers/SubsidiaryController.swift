@@ -3,7 +3,6 @@ import FlorShopDTOs
 import Vapor
 
 struct SubsidiaryController: RouteCollection {
-//    let syncManager: SyncManager
     let validator: FlorShopAuthValitator
     let florShopAuthProvider: FlorShopAuthProvider
     func boot(routes: any RoutesBuilder) throws {
@@ -18,8 +17,6 @@ struct SubsidiaryController: RouteCollection {
         let payload = try await validator.verifyToken(token, client: req.client)
         let subsidiaryDTO = try req.content.decode(SubsidiaryServerDTO.self).clean()
         try self.validateInput(dto: subsidiaryDTO)
-//        let oldGlobalToken: Int64 = await self.syncManager.getLastGlobalToken()
-//        let oldBranchToken: Int64 = await self.syncManager.getLastBranchToken(subsidiaryCic: payload.subsidiaryCic)
         let responseString: String = try await req.db.transaction { transaction -> String in
             let role: UserSubsidiaryRole
             if let subsidiaryCic = subsidiaryDTO.subsidiaryCic {
@@ -49,14 +46,14 @@ struct SubsidiaryController: RouteCollection {
                 try await self.florShopAuthProvider.saveSubsidiary(request: request, internalToken: internalToken)
                 subsidiary.name = subsidiaryDTO.name
                 subsidiary.imageUrl = subsidiaryDTO.imageUrl
-//                subsidiary.syncToken = await self.syncManager.nextGlobalToken()
                 try await subsidiary.update(on: transaction)
                 return ("Updated")
             } else {//CREATE
                 guard try await !Subsidiary.nameExist(name: subsidiaryDTO.name, on: transaction) else {
                     throw Abort(.badRequest, reason: "La subsidiaria con este nombre ya existe")
                 }
-                guard let companyId = try await Company.findCompany(companyCic: payload.companyCic, on: transaction)?.id else {
+                guard let companyEntity = try await Company.findCompany(companyCic: payload.companyCic, on: transaction),
+                      let companyEntityId = companyEntity.id else {
                     throw Abort(.badRequest, reason: "La compañia no existe existe")
                 }
                 //TODO: Segregate this in a fucntion
@@ -74,14 +71,13 @@ struct SubsidiaryController: RouteCollection {
                     subsidiaryCic: UUID().uuidString,
                     name: subsidiaryDTO.name,
                     imageUrl: subsidiaryDTO.imageUrl,
-//                    syncToken: await syncManager.nextGlobalToken(),
-                    companyID: companyId
+                    companyCic: companyEntity.companyCic,
+                    companyID: companyEntityId
                 )
                 try await subsidiaryNew.save(on: transaction)
                 return ("Created")
             }
         }
-//        await self.syncManager.sendSyncData(oldGlobalToken: oldGlobalToken, oldBranchToken: oldBranchToken, subsidiaryCic: payload.subsidiaryCic)
         return DefaultResponse(message: responseString)
     }
     private func validateInput(dto: SubsidiaryServerDTO) throws {

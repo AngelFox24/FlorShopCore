@@ -3,7 +3,6 @@ import FlorShopDTOs
 import Vapor
 
 struct CustomerContoller: RouteCollection {
-//    let syncManager: SyncManager
     let validator: FlorShopAuthValitator
     func boot(routes: any RoutesBuilder) throws {
         let customers = routes.grouped("customers")
@@ -17,8 +16,6 @@ struct CustomerContoller: RouteCollection {
         }
         let payload = try await validator.verifyToken(token, client: req.client)
         let customerDTO = try req.content.decode(CustomerServerDTO.self)
-//        let oldGlobalToken: Int64 = await self.syncManager.getLastGlobalToken()
-//        let oldBranchToken: Int64 = await self.syncManager.getLastBranchToken(subsidiaryCic: payload.subsidiaryCic)
         let responseString: String = try await req.db.transaction { transaction -> String in
             if let customerCic = customerDTO.customerCic {//tiene la intencion de actualizar
                 guard let customer = try await Customer.findCustomer(customerCic: customerCic, on: transaction) else {
@@ -37,7 +34,6 @@ struct CustomerContoller: RouteCollection {
                 customer.isDateLimitActive = customerDTO.isDateLimitActive
                 customer.phoneNumber = customerDTO.phoneNumber
                 customer.imageUrl = customerDTO.imageUrl
-//                customer.syncToken = await syncManager.nextGlobalToken()
                 //TODO: Use calculated variables
                 if customerDTO.isDateLimitActive && customer.totalDebt > 0,
                    let firstDatePurchaseWithCredit = customer.firstDatePurchaseWithCredit {
@@ -52,7 +48,8 @@ struct CustomerContoller: RouteCollection {
                 return ("Updated")
             } else {
                 //Create
-                guard let companyID = try await Company.findCompany(companyCic: payload.companyCic, on: transaction)?.id else {
+                guard let companyEntity = try await Company.findCompany(companyCic: payload.companyCic, on: transaction),
+                      let companyEntityId = companyEntity.id else {
                     throw Abort(.badRequest, reason: "La compañia no existe")
                 }
                 guard try await !customerFullNameExist(customerDTO: customerDTO, db: transaction) else {
@@ -75,14 +72,13 @@ struct CustomerContoller: RouteCollection {
                     phoneNumber: customerDTO.phoneNumber,
                     creditLimit: customerDTO.creditLimit,
                     imageUrl: customerDTO.imageUrl,
-//                    syncToken: await syncManager.nextGlobalToken(),
-                    companyID: companyID
+                    companyCic: companyEntity.companyCic,
+                    companyID: companyEntityId
                 )
                 try await customerNew.save(on: transaction)
                 return ("Created")
             }
         }
-//        await self.syncManager.sendSyncData(oldGlobalToken: oldGlobalToken, oldBranchToken: oldBranchToken, subsidiaryCic: payload.subsidiaryCic)
         return DefaultResponse(message: responseString)
     }
     @Sendable
@@ -98,8 +94,6 @@ struct CustomerContoller: RouteCollection {
         guard payCustomerDebtParameters.amount > 0 else {
             throw Abort(.badRequest, reason: "El monto debe ser mayor a 0")
         }
-//        let oldGlobalToken: Int64 = await self.syncManager.getLastGlobalToken()
-//        let oldBranchToken: Int64 = await self.syncManager.getLastBranchToken(subsidiaryCic: payload.subsidiaryCic)
         let remainingMoney = try await req.db.transaction { transaction -> Int in
             var customerTotalDebt = customer.totalDebt
             var remainingMoney = payCustomerDebtParameters.amount
@@ -109,7 +103,6 @@ struct CustomerContoller: RouteCollection {
                 if remainingMoney >= subtotal && customerTotalDebt >= subtotal  { //Si alcanza para pagar esta deuda y deuda del cliente debe ser mayor a subtotal
                     remainingMoney -= subtotal
                     sale.paymentType = PaymentType.cash
-//                    sale.syncToken = await self.syncManager.nextBranchToken(subsidiaryCic: payload.subsidiaryCic)
                     customerTotalDebt -= subtotal
                     try await sale.update(on: transaction)
                 }
@@ -117,11 +110,9 @@ struct CustomerContoller: RouteCollection {
             customer.totalDebt = customerTotalDebt
             customer.isCreditLimit = customer.isCreditLimitActive ? customer.totalDebt > customer.creditLimit : false
             customer.isDateLimit = customer.isDateLimitActive ? Date() > customer.dateLimit : false
-//            customer.syncToken = await self.syncManager.nextGlobalToken()
             try await customer.update(on: transaction)
             return remainingMoney
         }
-//        await self.syncManager.sendSyncData(oldGlobalToken: oldGlobalToken, oldBranchToken: oldBranchToken, subsidiaryCic: payload.subsidiaryCic)
         return PayCustomerDebtClientDTO(
             customerCic: payCustomerDebtParameters.customerCic,
             change: remainingMoney

@@ -3,16 +3,16 @@ import Foundation
 import struct Foundation.UUID
 
 final class ProductSubsidiary: Model, @unchecked Sendable {
-    static let schema = "productSubsidiary"
+    static let schema = "product_subsidiary"
     
     @ID(key: .id) var id: UUID?
     
     @Field(key: "active") var active: Bool
-    @Field(key: "expirationDate") var expirationDate: Date?
-    @Field(key: "quantityStock") var quantityStock: Int
-    @Field(key: "unitCost") var unitCost: Int
-    @Field(key: "unitPrice") var unitPrice: Int
-//    @Field(key: "syncToken") var syncToken: Int64
+    @Field(key: "expiration_date") var expirationDate: Date?
+    @Field(key: "quantity_stock") var quantityStock: Int
+    @Field(key: "unit_cost") var unitCost: Int
+    @Field(key: "unit_price") var unitPrice: Int
+    @Field(key: "subsidiary_cic") var subsidiaryCic: String
     
     //MARK: Timestamps
     @Timestamp(key: "created_at", on: .create) var createdAt: Date?
@@ -30,7 +30,7 @@ final class ProductSubsidiary: Model, @unchecked Sendable {
         quantityStock: Int,
         unitCost: Int,
         unitPrice: Int,
-//        syncToken: Int64,
+        subsidiaryCic: String,
         productID: Product.IDValue,
         subsidiaryID: Subsidiary.IDValue
     ) {
@@ -39,7 +39,7 @@ final class ProductSubsidiary: Model, @unchecked Sendable {
         self.quantityStock = quantityStock
         self.unitCost = unitCost
         self.unitPrice = unitPrice
-//        self.syncToken = syncToken
+        self.subsidiaryCic = subsidiaryCic
         self.$product.id = productID
         self.$subsidiary.id = subsidiaryID
     }

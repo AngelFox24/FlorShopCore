@@ -5,26 +5,25 @@ import struct Foundation.UUID
 final class Customer: Model, @unchecked Sendable {
     static let schema = "customers"
     
-    @ID(key: .id)
-    var id: UUID?
+    @ID(key: .id) var id: UUID?
     
     @Field(key: "customer_cic") var customerCic: String
     @Field(key: "name") var name: String
-    @Field(key: "lastName") var lastName: String?
-    @Field(key: "totalDebt") var totalDebt: Int
-    @Field(key: "creditScore") var creditScore: Int
-    @Field(key: "creditDays") var creditDays: Int
-    @Field(key: "isCreditLimitActive") var isCreditLimitActive: Bool
-    @Field(key: "isCreditLimit") var isCreditLimit: Bool
-    @Field(key: "isDateLimitActive") var isDateLimitActive: Bool
-    @Field(key: "isDateLimit") var isDateLimit: Bool
-    @Field(key: "dateLimit") var dateLimit: Date
-    @Field(key: "firstDatePurchaseWithCredit") var firstDatePurchaseWithCredit: Date?
-    @Field(key: "lastDatePurchase") var lastDatePurchase: Date
-    @Field(key: "phoneNumber") var phoneNumber: String?
-    @Field(key: "creditLimit") var creditLimit: Int
-    @Field(key: "imageUrl") var imageUrl: String?
-//    @Field(key: "syncToken") var syncToken: Int64
+    @Field(key: "last_name") var lastName: String?
+    @Field(key: "total_debt") var totalDebt: Int
+    @Field(key: "credit_score") var creditScore: Int
+    @Field(key: "credit_days") var creditDays: Int
+    @Field(key: "is_credit_limit_active") var isCreditLimitActive: Bool
+    @Field(key: "is_credit_limit") var isCreditLimit: Bool
+    @Field(key: "is_date_limit_active") var isDateLimitActive: Bool
+    @Field(key: "is_date_limit") var isDateLimit: Bool
+    @Field(key: "date_limit") var dateLimit: Date
+    @Field(key: "first_date_purchase_with_credit") var firstDatePurchaseWithCredit: Date?
+    @Field(key: "last_date_purchase") var lastDatePurchase: Date
+    @Field(key: "phone_number") var phoneNumber: String?
+    @Field(key: "credit_limit") var creditLimit: Int
+    @Field(key: "image_url") var imageUrl: String?
+    @Field(key: "company_cic") var companyCic: String
     
     //MARK: Timestamps
     @Timestamp(key: "created_at", on: .create) var createdAt: Date?
@@ -54,7 +53,7 @@ final class Customer: Model, @unchecked Sendable {
         phoneNumber: String?,
         creditLimit: Int,
         imageUrl: String?,
-//        syncToken: Int64,
+        companyCic: String,
         companyID: Company.IDValue
     ) {
         self.customerCic = customerCic
@@ -72,8 +71,8 @@ final class Customer: Model, @unchecked Sendable {
         self.lastDatePurchase = lastDatePurchase
         self.phoneNumber = phoneNumber
         self.creditLimit = creditLimit
-//        self.syncToken = syncToken
         self.imageUrl = imageUrl
+        self.companyCic = companyCic
         self.$company.id = companyID
     }
 }

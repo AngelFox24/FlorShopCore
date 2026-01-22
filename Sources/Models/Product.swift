@@ -9,11 +9,11 @@ final class Product: Model, @unchecked Sendable {
     @ID(key: .id) var id: UUID?
     
     @Field(key: "product_cic") var productCic: String
-    @Field(key: "barCode") var barCode: String
-    @Field(key: "productName") var productName: String
-    @Field(key: "unitType") var unitType: UnitType
-    @Field(key: "imageUrl") var imageUrl: String?
-//    @Field(key: "syncToken") var syncToken: Int64
+    @Field(key: "bar_code") var barCode: String
+    @Field(key: "product_name") var productName: String
+    @Field(key: "unit_type") var unitType: UnitType
+    @Field(key: "image_url") var imageUrl: String?
+    @Field(key: "company_cic") var companyCic: String
     
     //MARK: Timestamps
     @Timestamp(key: "created_at", on: .create) var createdAt: Date?
@@ -30,8 +30,8 @@ final class Product: Model, @unchecked Sendable {
         barCode: String,
         productName: String,
         unitType: UnitType,
-//        syncToken: Int64,
         imageUrl: String?,
+        companyCic: String,
         companyID: Company.IDValue
     ) {
         self.productCic = productCic
@@ -39,7 +39,7 @@ final class Product: Model, @unchecked Sendable {
         self.productName = productName
         self.unitType = unitType
         self.imageUrl = imageUrl
-//        self.syncToken = syncToken
+        self.companyCic = companyCic
         self.$company.id = companyID
     }
 }

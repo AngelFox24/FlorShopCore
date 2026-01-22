@@ -9,8 +9,8 @@ final class Subsidiary: Model, @unchecked Sendable {
     
     @Field(key: "subsidiary_cic") var subsidiaryCic: String
     @Field(key: "name") var name: String
-    @Field(key: "imageUrl") var imageUrl: String?
-//    @Field(key: "syncToken") var syncToken: Int64
+    @Field(key: "image_url") var imageUrl: String?
+    @Field(key: "company_cic") var companyCic: String
     
     //MARK: Timestamps
     @Timestamp(key: "created_at", on: .create) var createdAt: Date?
@@ -25,13 +25,13 @@ final class Subsidiary: Model, @unchecked Sendable {
         subsidiaryCic: String,
         name: String,
         imageUrl: String?,
-//        syncToken: Int64,
+        companyCic: String,
         companyID: Company.IDValue
     ) {
         self.subsidiaryCic = subsidiaryCic
         self.name = name
         self.imageUrl = imageUrl
-//        self.syncToken = syncToken
+        self.companyCic = companyCic
         self.$company.id = companyID
     }
 }

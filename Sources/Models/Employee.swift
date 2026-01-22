@@ -9,11 +9,11 @@ final class Employee: Model, @unchecked Sendable {
     
     @Field(key: "employee_cic") var employeeCic: String
     @Field(key: "name") var name: String
-    @Field(key: "lastName") var lastName: String?
+    @Field(key: "last_name") var lastName: String?
     @Field(key: "email") var email: String
-    @Field(key: "phoneNumber") var phoneNumber: String?
-    @Field(key: "imageUrl") var imageUrl: String?
-//    @Field(key: "syncToken") var syncToken: Int64
+    @Field(key: "phone_number") var phoneNumber: String?
+    @Field(key: "image_url") var imageUrl: String?
+    @Field(key: "company_cic") var companyCic: String
     
     //MARK: Timestamps
     @Timestamp(key: "created_at", on: .create) var createdAt: Date?
@@ -32,7 +32,7 @@ final class Employee: Model, @unchecked Sendable {
         email: String,
         phoneNumber: String?,
         imageUrl: String?,
-//        syncToken: Int64,
+        companyCic: String,
         companyID: Company.IDValue
     ) {
         self.employeeCic = employeeCic
@@ -41,7 +41,7 @@ final class Employee: Model, @unchecked Sendable {
         self.email = email
         self.phoneNumber = phoneNumber
         self.imageUrl = imageUrl
-//        self.syncToken = syncToken
+        self.companyCic = companyCic
         self.$company.id = companyID
     }
 }

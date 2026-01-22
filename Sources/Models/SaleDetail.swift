@@ -4,19 +4,19 @@ import struct Foundation.UUID
 import FlorShopDTOs
 
 final class SaleDetail: Model, @unchecked Sendable {
-    static let schema = "saleDetails"
+    static let schema = "sale_details"
     
     @ID(key: .id) var id: UUID?
     
-    @Field(key: "productName") var productName: String
-    @Field(key: "barCode") var barCode: String
-    @Field(key: "quantitySold") var quantitySold: Int
+    @Field(key: "product_name") var productName: String
+    @Field(key: "bar_code") var barCode: String
+    @Field(key: "quantity_sold") var quantitySold: Int
     @Field(key: "subtotal") var subtotal: Int
-    @Field(key: "unitType") var unitType: UnitType
-    @Field(key: "unitCost") var unitCost: Int
-    @Field(key: "unitPrice") var unitPrice: Int
-    @Field(key: "imageUrl") var imageUrl: String?
-//    @Field(key: "syncToken") var syncToken: Int64
+    @Field(key: "unit_type") var unitType: UnitType
+    @Field(key: "unit_cost") var unitCost: Int
+    @Field(key: "unit_price") var unitPrice: Int
+    @Field(key: "image_url") var imageUrl: String?
+    @Field(key: "subsidiary_cic") var subsidiaryCic: String
     
     //MARK: Timestamps
     @Timestamp(key: "created_at", on: .create) var createdAt: Date?
@@ -36,8 +36,8 @@ final class SaleDetail: Model, @unchecked Sendable {
         unitType: UnitType,
         unitCost: Int,
         unitPrice: Int,
-//        syncToken: Int64,
         imageUrl: String?,
+        subsidiaryCic: String,
         saleID: Sale.IDValue
     ) {
         self.id = id
@@ -49,7 +49,7 @@ final class SaleDetail: Model, @unchecked Sendable {
         self.unitCost = unitCost
         self.unitPrice = unitPrice
         self.imageUrl = imageUrl
-//        self.syncToken = syncToken
+        self.subsidiaryCic = subsidiaryCic
         self.$sale.id = saleID
     }
 }

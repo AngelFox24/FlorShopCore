@@ -3,6 +3,7 @@ import JWT
 
 struct ScopedTokenPayload: JWTPayload {
     var sub: SubjectClaim           // user_cic
+    var aud: AudienceClaim
     var companyCic: String
     var subsidiaryCic: String
     var isOwner: Bool
@@ -20,6 +21,7 @@ struct ScopedTokenPayload: JWTPayload {
         expiration: Date
     ) {
         self.sub = .init(value: subject)
+        self.aud = .init(value: ["FlorShopCore"])
         self.companyCic = companyCic
         self.subsidiaryCic = subsidiaryCic
         self.isOwner = isOwner
