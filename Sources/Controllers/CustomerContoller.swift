@@ -88,7 +88,7 @@ struct CustomerContoller: RouteCollection {
         }
         let payload = try await validator.verifyToken(token, client: req.client)
         let payCustomerDebtParameters = try req.content.decode(PayCustomerDebtServerDTO.self)
-        guard let customer = try await Customer.findCustomer(customerCic: payload.sub.value, on: req.db) else {
+        guard let customer = try await Customer.findCustomer(customerCic: payCustomerDebtParameters.customerCic, on: req.db) else {
             throw Abort(.badRequest, reason: "El cliente no existe")
         }
         guard payCustomerDebtParameters.amount > 0 else {

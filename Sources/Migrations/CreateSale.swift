@@ -10,6 +10,7 @@ struct CreateSale: AsyncMigration {
             .field("subsidiary_cic", .string, .required)
             .field("subsidiary_id", .uuid, .required, .references(Subsidiary.schema, "id"))
             .field("employee_subsidiary_id", .uuid, .required, .references(EmployeeSubsidiary.schema, "id"))
+            .field("customer_cic", .string)
             .field("customer_id", .uuid, .references(Customer.schema, "id"))
             .field("created_at", .datetime)
             .field("updated_at", .datetime)

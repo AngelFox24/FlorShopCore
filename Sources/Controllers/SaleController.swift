@@ -91,6 +91,7 @@ struct SaleController: RouteCollection {
                 saleDate: date,
                 total: saleTransactionDTO.cart.total,
                 subsidiaryCic: subsidiaryEntity.subsidiaryCic,
+                customerCic: customerEntity?.customerCic,
                 subsidiaryID: subsidiaryEntityId,
                 employeeSubsidiaryID: employeeSubsidiaryId,
                 customerID: customerEntity?.id
@@ -113,7 +114,15 @@ struct SaleController: RouteCollection {
                     saleID: saleId
                 )
                 try await saleDetailNew.save(on: transaction)
-                totalOwn += cartDetailDTO.quantity * productSubsidiary.unitPrice
+                switch productSubsidiary.product.unitType {
+                case .unit:
+                    totalOwn += cartDetailDTO.quantity * productSubsidiary.unitPrice
+                case .kilo:
+                    guard cartDetailDTO.quantity > 0 else { continue }
+                    let precioEscalado = productSubsidiary.unitPrice * cartDetailDTO.quantity
+                    let redondeado = (precioEscalado + 500) / 1000
+                    totalOwn += max(1, redondeado)
+                }
             }
             guard totalOwn == saleTransactionDTO.cart.total else {
                 print("Monto no coincide con el calculo de la BD, calculo real: \(totalOwn) calculo enviado: \(saleTransactionDTO.cart.total)")

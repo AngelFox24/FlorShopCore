@@ -12,6 +12,7 @@ final class Sale: Model, @unchecked Sendable {
     @Field(key: "sale_date") var saleDate: Date
     @Field(key: "total") var total: Int
     @Field(key: "subsidiary_cic") var subsidiaryCic: String
+    @Field(key: "customer_cic") var customerCic: String?
     
     //MARK: Timestamps
     @Timestamp(key: "created_at", on: .create) var createdAt: Date?
@@ -32,6 +33,7 @@ final class Sale: Model, @unchecked Sendable {
         saleDate: Date,
         total: Int,
         subsidiaryCic: String,
+        customerCic: String?,
         subsidiaryID: Subsidiary.IDValue,
         employeeSubsidiaryID: EmployeeSubsidiary.IDValue,
         customerID: Customer.IDValue?
@@ -41,6 +43,7 @@ final class Sale: Model, @unchecked Sendable {
         self.saleDate = saleDate
         self.total = total
         self.subsidiaryCic = subsidiaryCic
+        self.customerCic = customerCic
         self.$subsidiary.id = subsidiaryID
         self.$employeeSubsidiary.id = employeeSubsidiaryID
         self.$customer.id = customerID

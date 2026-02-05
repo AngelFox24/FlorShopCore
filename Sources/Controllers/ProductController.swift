@@ -32,13 +32,13 @@ struct ProductController: RouteCollection {
                 if !productDTO.isMainEqual(to: product) {
                     //Update
                     if product.productName != productDTO.productName {
-                        guard try await !productNameExist(productDTO: productDTO, db: transaction) else {
+                        guard try await !productNameExist(productDTO: productDTO, companyCic: payload.companyCic, db: transaction) else {
                             throw Abort(.badRequest, reason: "El nombre del producto ya existe")
                         }
                         product.productName = productDTO.productName
                     }
                     if product.barCode != productDTO.barCode {
-                        guard try await !productBarCodeExist(productDTO: productDTO, db: transaction) else {
+                        guard try await !productBarCodeExist(productDTO: productDTO, companyCic: payload.companyCic, db: transaction) else {
                             throw Abort(.badRequest, reason: "El codigo de barras del producto ya existe")
                         }
                         product.barCode = productDTO.barCode
@@ -70,10 +70,10 @@ struct ProductController: RouteCollection {
                       let companyEntityId = companyEntity.id else {
                     throw Abort(.badRequest, reason: "La compañia no existe")
                 }
-                guard try await !productNameExist(productDTO: productDTO, db: transaction) else {
+                guard try await !productNameExist(productDTO: productDTO, companyCic: payload.companyCic, db: transaction) else {
                     throw Abort(.badRequest, reason: "El nombre del producto ya existe")
                 }
-                guard try await !productBarCodeExist(productDTO: productDTO, db: transaction) else {
+                guard try await !productBarCodeExist(productDTO: productDTO, companyCic: payload.companyCic, db: transaction) else {
                     throw Abort(.badRequest, reason: "El codigo de barras del producto ya existe")
                 }
                 //Create
@@ -106,13 +106,14 @@ struct ProductController: RouteCollection {
         }
         return DefaultResponse(message: responseString)
     }
-    private func productNameExist(productDTO: ProductServerDTO, db: any Database) async throws -> Bool {
+    private func productNameExist(productDTO: ProductServerDTO, companyCic: String, db: any Database) async throws -> Bool {
         guard productDTO.productName != "" else {
             print("Producto existe vacio aunque no exista xd")
             return true
         }
         let query = try await Product.query(on: db)
             .filter(\.$productName == productDTO.productName)
+            .filter(\.$companyCic == companyCic)
             .limit(1)
             .first()
         if query != nil {
@@ -121,13 +122,14 @@ struct ProductController: RouteCollection {
             return false
         }
     }
-    private func productBarCodeExist(productDTO: ProductServerDTO, db: any Database) async throws -> Bool {
+    private func productBarCodeExist(productDTO: ProductServerDTO, companyCic: String, db: any Database) async throws -> Bool {
         guard productDTO.barCode != "" else {
             print("Producto barcode vacio aunque no exista xd")
             return false
         }
         let query = try await Product.query(on: db)
             .filter(\.$barCode == productDTO.barCode)
+            .filter(\.$companyCic == companyCic)
             .limit(1)
             .first()
         if query != nil {

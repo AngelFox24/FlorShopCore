@@ -14,7 +14,7 @@ struct CreateEmployee: AsyncMigration {
             .field("company_id", .uuid, .required, .references(Company.schema, "id"))
             .field("created_at", .datetime)
             .field("updated_at", .datetime)
-            .unique(on: "employee_cic")
+            .unique(on: "employee_cic", "company_cic")
             .create()
     }
     

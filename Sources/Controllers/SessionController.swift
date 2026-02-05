@@ -17,9 +17,6 @@ struct SessionController: RouteCollection {
         }
         let payload = try await validator.verifyToken(token, client: req.client)
         let registerParameters = try req.content.decode(RegisterParameters.self)
-        guard try await Company.query(on: req.db).first() == nil else {
-            throw Abort(.badRequest, reason: "No se puede registrar mas de una empresa")
-        }
         try await req.db.transaction { transaction in
             let companyCic = payload.companyCic
             let subsidiaryCic = payload.subsidiaryCic
