@@ -90,6 +90,8 @@ struct SaleController: RouteCollection {
                 paymentType: saleTransactionDTO.paymentType,
                 saleDate: date,
                 total: saleTransactionDTO.cart.total,
+                totalCharged: saleTransactionDTO.cart.totalRounded,
+                roundingDifference: saleTransactionDTO.cart.totalRounded - saleTransactionDTO.cart.total,
                 subsidiaryCic: subsidiaryEntity.subsidiaryCic,
                 customerCic: customerEntity?.customerCic,
                 subsidiaryID: subsidiaryEntityId,

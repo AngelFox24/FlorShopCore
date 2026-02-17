@@ -11,6 +11,8 @@ final class Sale: Model, @unchecked Sendable {
     @Field(key: "payment_type") var paymentType: PaymentType
     @Field(key: "sale_date") var saleDate: Date
     @Field(key: "total") var total: Int
+    @Field(key: "total_charged") var totalCharged: Int
+    @Field(key: "rounding_difference") var roundingDifference: Int
     @Field(key: "subsidiary_cic") var subsidiaryCic: String
     @Field(key: "customer_cic") var customerCic: String?
     
@@ -32,6 +34,8 @@ final class Sale: Model, @unchecked Sendable {
         paymentType: PaymentType,
         saleDate: Date,
         total: Int,
+        totalCharged: Int,
+        roundingDifference: Int,
         subsidiaryCic: String,
         customerCic: String?,
         subsidiaryID: Subsidiary.IDValue,
@@ -42,6 +46,8 @@ final class Sale: Model, @unchecked Sendable {
         self.paymentType = paymentType
         self.saleDate = saleDate
         self.total = total
+        self.totalCharged = totalCharged
+        self.roundingDifference = roundingDifference
         self.subsidiaryCic = subsidiaryCic
         self.customerCic = customerCic
         self.$subsidiary.id = subsidiaryID
