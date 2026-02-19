@@ -23,4 +23,9 @@ struct FlorShopAuthProvider {
             throw Abort(.badRequest, reason: "Error al actualizar UserSubsidiary en FlorShopAuth")
         }
     }
+    func getInitialData(subsidiaryCic: String, internalToken: String) async throws -> InitialDataDTO {
+        let request = FlorShopAuthApiRequest.getInitalData(subsidiaryCic: subsidiaryCic, internalToken: internalToken)
+        let response: InitialDataDTO = try await NetworkManager.shared.perform(request, decodeTo: InitialDataDTO.self)
+        return response
+    }
 }

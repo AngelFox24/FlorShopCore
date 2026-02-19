@@ -5,6 +5,7 @@ enum FlorShopAuthApiRequest {
     case updateCompany(request: CompanyServerDTO, internalToken: String)
     case saveSubsidiary(request: RegisterSubsidiaryRequest, internalToken: String)
     case updateUserSubsidiary(request: UpdateUserSubsidiaryRequest, internalToken: String)
+    case getInitalData(subsidiaryCic: String, internalToken: String)
 }
 
 extension FlorShopAuthApiRequest: NetworkRequest {
@@ -18,6 +19,8 @@ extension FlorShopAuthApiRequest: NetworkRequest {
             path = "/subsidiary"
         case .updateUserSubsidiary:
             path = "/usersubsidiary"
+        case .getInitalData(let subsidiaryCic, _):
+            path = "/initialData?subsidiaryCic=\(subsidiaryCic)"
         }
         return URL(string: baseUrl + path)
     }
@@ -30,6 +33,8 @@ extension FlorShopAuthApiRequest: NetworkRequest {
                 .post
         case .updateUserSubsidiary:
                 .post
+        case .getInitalData:
+                .get
         }
     }
     
@@ -45,6 +50,9 @@ extension FlorShopAuthApiRequest: NetworkRequest {
         case .updateUserSubsidiary(_, let internalToken):
             headers[.contentType] = ContentType.json.rawValue
             headers[.authorization] = "Bearer \(internalToken)"
+        case .getInitalData(_, let internalToken):
+            headers[.contentType] = ContentType.json.rawValue
+            headers[.authorization] = "Bearer \(internalToken)"
         }
         return headers
     }
@@ -57,6 +65,8 @@ extension FlorShopAuthApiRequest: NetworkRequest {
             return request
         case .updateUserSubsidiary(let request, _):
             return request
+        case .getInitalData:
+            return nil
         }
     }
 }
