@@ -10,6 +10,7 @@ struct ProductController: RouteCollection {
         products.post(use: self.save)
         //        products.post("bulkCreate", use: self.bulkCreate)
     }
+    //MARK: POST /producs
     @Sendable
     func save(req: Request) async throws -> DefaultResponse {
         let payload = try await req.jwt.florshop.verifyScopedToken()

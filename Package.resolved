@@ -1,5 +1,5 @@
 {
-  "originHash" : "5061f445da276b37495305a8d869442781fca961748a50227837e8200932dfc4",
+  "originHash" : "ff7cbe6317df8ad5d6793e6a15c89de74250680a826841a69563edd7d4e312cd",
   "pins" : [
     {
       "identity" : "async-http-client",
@@ -33,8 +33,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/AngelFox24/florshop-auth-client.git",
       "state" : {
-        "revision" : "fe0e5b9ee4308e773e86464186ad97412814059e",
-        "version" : "0.0.7"
+        "revision" : "a36bacf2376d7361de106da79e3443b8b7f7808a",
+        "version" : "0.0.8"
       }
     },
     {

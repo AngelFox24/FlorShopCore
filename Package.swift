@@ -22,7 +22,7 @@ let package = Package(
         // 🔵 Valkey Vapor
         .package(url: "https://github.com/vapor-community/valkey.git", from: "1.2.0"),
         // 🔵 Extension para validar FlorShopAuth
-        .package(url: "https://github.com/AngelFox24/florshop-auth-client.git", exact: "0.0.7"),
+        .package(url: "https://github.com/AngelFox24/florshop-auth-client.git", exact: "0.0.8"),
         // 🔵 Extension para Networking
         .package(url: "https://github.com/AngelFox24/florshop-networking.git", exact: "0.0.7"),
         // 🔵 Extension para Valkey Streams
